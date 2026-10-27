@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Previously On Check-in Desk</title>
+  <link rel="stylesheet" href="/fonts.css">
+  <link rel="stylesheet" href="/assets/phosphor-light.css">
+  <link rel="stylesheet" href="/control.css">
+  <script src="/control.js" defer></script>
+</head>
+<body>
+  <main class="wrap">
+    <header class="desk-title">
+      <div><p class="eyebrow"><i class="ph-light ph-ticket" aria-hidden="true"></i> PREVIOUSLY ON</p><h1>Check-in desk</h1><p>Cards follow your approval setting before going on stream.</p></div>
+      <span class="demo-badge" id="demo-badge" hidden>DEMO REPLAY</span>
+    </header>
+
+    <section class="slips" id="slips" aria-busy="true">
+      <article class="slip connection-slip">
+        <h2><i class="ph-light ph-plugs-connected" aria-hidden="true"></i> Connection</h2>
+        <ul class="status-list">
+          <li><i class="ph-light ph-broadcast" aria-hidden="true"></i><span>Twitch</span><b class="state" id="connection-state"><span class="dot"></span>Loading</b></li>
+          <li><i class="ph-light ph-microphone" aria-hidden="true"></i><span>Voice capture</span><b class="state" id="voice-state">Loading</b></li>
+          <li><i class="ph-light ph-cpu" aria-hidden="true"></i><span>Model</span><b class="state" id="model-state">Loading</b></li>
+        </ul>
+        <div class="approval-setting">
+          <label for="approval-setting">Approval behavior</label>
+          <select id="approval-setting">
+            <option value="5">Auto-approve after 5 seconds</option>
+            <option value="10">Auto-approve after 10 seconds</option>
+            <option value="20">Auto-approve after 20 seconds</option>
+            <option value="hold">Hold until I approve</option>
+          </select>
+          <p id="approval-help">When the timer runs out, the card is approved, shown on stream and sent to chat. Hold mode waits until you approve.</p>
+        </div>
+        <div class="controls">
+          <button class="button" id="break-button" type="button"><i class="ph-light ph-coffee" aria-hidden="true"></i> Going on break</button>
+          <button class="button" id="back-button" type="button" disabled><i class="ph-light ph-door-open" aria-hidden="true"></i> Back</button>
+          <button class="button" data-simulate="ad-break" type="button"><i class="ph-light ph-timer" aria-hidden="true"></i> Simulate ad break (60 s) <b>SIMULATED</b></button>
+          <button class="button" data-simulate="raid" type="button"><i class="ph-light ph-users-three" aria-hidden="true"></i> Simulate raid <b>SIMULATED</b></button>
+          <button class="button" data-simulate="catchup" type="button"><i class="ph-light ph-chat-circle-text" aria-hidden="true"></i> Simulate !catchup <b>SIMULATED</b></button>
+        </div>
+      </article>
+
+      <article class="slip waiting-slip">
+        <h2><i class="ph-light ph-hourglass-medium" aria-hidden="true"></i> Waiting to board</h2>
+        <div class="loading-skeleton" id="pending-skeleton"><span></span><span></span><span></span></div>
+        <div class="empty-state" id="empty-pending" hidden>No card waiting. The next one appears after an ad break, a raid or a viewer's !catchup.</div>
+        <div class="pending-card" id="pending-card" hidden></div>
+        <div class="error-message" id="panel-error" hidden></div>
+      </article>
+
+      <article class="slip voice-slip">
+        <h2><i class="ph-light ph-microphone" aria-hidden="true"></i> Voice and notes</h2>
+        <p class="voice-help" id="voice-help">Chrome's Web Speech API sends audio to Google's speech service while voice capture is on.</p>
+        <button class="button" id="voice-button" type="button" disabled><i class="ph-light ph-microphone" aria-hidden="true"></i> Turn voice capture on</button>
+        <p class="voice-warning" id="voice-warning" hidden>Voice capture needs Chrome. You can still add notes.</p>
+        <div class="transcript" id="transcript" aria-live="polite"><p class="muted">No transcript yet.</p></div>
+        <p class="interim" id="interim" hidden></p>
+        <form class="note-form" id="note-form">
+          <label for="note-input">One-line note</label>
+          <div><input id="note-input" maxlength="240" placeholder="The north path is open" required><button class="button primary" type="submit"><i class="ph-light ph-note-pencil" aria-hidden="true"></i> Add note</button></div>
+        </form>
+      </article>
+    </section>
+
+    <section class="slip log-slip">
+      <h2><i class="ph-light ph-clock-counter-clockwise" aria-hidden="true"></i> Card log</h2>
+      <div class="log-skeleton" id="log-skeleton"><span></span><span></span></div>
+      <p class="empty-state" id="empty-log" hidden>No cards yet. Approved and vetoed cards will appear here.</p>
+      <div class="card-log" id="card-log"></div>
+    </section>
+    <p class="connection-error" id="connection-error" hidden>Connection to the local server was lost. Reconnecting.</p>
+  </main>
+</body>
+</html>

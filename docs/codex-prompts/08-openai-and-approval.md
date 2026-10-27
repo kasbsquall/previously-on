@@ -1,0 +1,17 @@
+# Prompt 8
+
+Sent verbatim to Codex in session `01a174cd-3a2a-7f21-a9bf-1289a1e0b57a`.
+
+
+Product decision: recaps now run on the OpenAI API, and the repository must not mention any other model provider. Then fix what a review panel found in the README.
+
+1. **Switch the model path to OpenAI.** Read the current OpenAI docs first (https://platform.openai.com/docs and https://developers.openai.com) for the Responses API with Structured Outputs in the official `openai` Node SDK, including its zod helper. Replace `src/recap/model.js` with an OpenAI implementation: same `RecapSchema`, one call with structured output, the source list in a delimited data block, the same system rules (untrusted chat, every bullet cites its sources, sentence-case headline, never starts with "Previously", describe the stream not who said what, the stub already shows who arrived), a 6-second timeout, typed SDK error handling, and a refusal or incomplete response falls back. Env: `OPENAI_API_KEY`, `OPENAI_MODEL`. Pick the default model from the docs: a current, fast, low-cost model that supports structured outputs; write in a code comment which doc page you used. Remove the old provider completely: SDK dependency, imports, env names, error messages, tests, SPEC.md, `.env.example`, README. `git grep -i` for the old provider's name must return nothing outside `package-lock.json` history (regenerate the lockfile). Mock the client in tests; no network in tests. Delete `results/eval-2026-10-25.json` (it was produced with the old provider); I will rerun `npm run eval` with a real key.
+2. **Demo raid bug.** In `npm run demo`, a simulated raid produced the fallback headline "The last 10 min on stream" and a first bullet "Raid from CozyCampfire with 14 viewers", so the trigger event was not excluded in that path (its text format differs from the excluded one). Exclude the trigger by its source id or a flag set when it is added, not by matching text, in both paths. Add a test through the demo's simulated raid.
+3. **Veto window.** A streamer who is playing cannot react in 5 seconds. Make it configurable from the panel: "Auto-approve after N seconds" (5, 10, 20) or "Hold until I approve" (cards wait, nothing posts on its own). Default stays auto-approve after 5 s. Persist the choice in `.data/`. Say plainly in the panel and the README what happens when the timer runs out.
+4. **README, rewritten around the review:**
+   - Lead with the ad break and the late viewer: "Viewers who come back from an ad break, or join mid-stream, get a 15-second recap of what they missed." Raid is the third trigger, not the hero.
+   - Right under the screenshots, a short "Proof" section with links: `docs/VERIFICATION.md` (live Twitch and OBS tests), the test command and what the suite covers (grounding, fallback, veto, cooldowns, keepalive, clock skew), and `BUILT_WITH_CODEX.md`.
+   - A "Built with Codex" section that shows the session ID `01a174cd-3a2a-7f21-a9bf-1289a1e0b57a` in the README itself and two sentences on how the build ran (one Codex thread, eight prompts, each written from the review of the previous block).
+   - Privacy line corrected: voice capture uses Chrome's Web Speech API, which sends audio to Google's speech service; chat and notes go only to the OpenAI recap call.
+   - What happens when the veto timer runs out, and the hold mode.
+5. `npm test` must pass. Report what changed and what you could not verify (the live OpenAI call). Do not commit.

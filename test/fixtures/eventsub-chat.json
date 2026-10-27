@@ -1,0 +1,36 @@
+{
+  "metadata": {
+    "message_id": "f1c2a387-161a-49f9-a165-0f21d7a4e1c4",
+    "message_type": "notification",
+    "message_timestamp": "2023-11-06T18:11:47.492253549Z",
+    "subscription_type": "channel.chat.message",
+    "subscription_version": "1"
+  },
+  "payload": {
+    "subscription": { "type": "channel.chat.message", "version": "1" },
+    "event": {
+      "broadcaster_user_id": "1971641",
+      "broadcaster_user_login": "streamer",
+      "broadcaster_user_name": "streamer",
+      "chatter_user_id": "4145994",
+      "chatter_user_login": "viewer32",
+      "chatter_user_name": "viewer32",
+      "message_id": "cc106a89-1814-919d-454c-f4f2f970aae7",
+      "message": {
+        "text": "Hi chat",
+        "fragments": [{ "type": "text", "text": "Hi chat", "cheermote": null, "emote": null, "mention": null }]
+      },
+      "color": "#00FF7F",
+      "badges": [{ "set_id": "moderator", "id": "1", "info": "" }],
+      "message_type": "text",
+      "cheer": null,
+      "reply": null,
+      "channel_points_custom_reward_id": null,
+      "source_broadcaster_user_id": null,
+      "source_broadcaster_user_login": null,
+      "source_broadcaster_user_name": null,
+      "source_message_id": null,
+      "source_badges": null
+    }
+  }
+}

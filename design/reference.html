@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Previously On, Boarding Stub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/light/style.css">
+<style>
+:root{
+  --paper:oklch(96% .012 85);
+  --paper-2:oklch(92.5% .016 85);
+  --paper-3:oklch(89% .02 85);
+  --ink:oklch(24% .03 260);
+  --ink-2:oklch(42% .03 260);
+  --navy:oklch(34% .09 262);
+  --navy-2:oklch(42% .1 262);
+  --red:oklch(56% .19 28);
+  --carbon:oklch(42% .11 300);
+  --perf:oklch(84% .015 85);
+  --ok:oklch(55% .12 150);
+  --rule:color-mix(in oklab, var(--ink) 14%, transparent);
+  --r:6px;
+  --ease:cubic-bezier(.23,1,.32,1);
+  --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .2 0 0 0 0 .18 0 0 0 0 .14 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+*{box-sizing:border-box;margin:0}
+html{background:var(--paper-2);color:var(--ink);font-family:"Hanken Grotesk",ui-sans-serif,sans-serif;-webkit-font-smoothing:antialiased}
+body{background:var(--paper-2) var(--grain);min-height:100vh;padding:24px 24px 64px}
+::selection{background:var(--navy);color:var(--paper)}
+.num{font-variant-numeric:tabular-nums lining-nums slashed-zero}
+.ph{font-size:1em;line-height:1}
+:focus-visible{outline:2px solid var(--navy);outline-offset:3px;border-radius:var(--r)}
+
+.wrap{max-width:1440px;margin:0 auto}
+
+/* ---------- STAGE ---------- */
+.stage{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:var(--r);background:var(--ink);
+  box-shadow:0 18px 40px -22px color-mix(in oklab,var(--ink) 60%,transparent)}
+.canvas{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0}
+.canvas>.game{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.stage-tag{position:absolute;top:12px;right:12px;z-index:3;display:flex;gap:6px;align-items:center;font-size:12px;font-weight:600;
+  background:color-mix(in oklab,var(--ink) 72%,transparent);color:var(--paper);padding:5px 9px;border-radius:var(--r)}
+
+/* ---------- THE STUB (overlay card) ---------- */
+.ticket{position:absolute;left:64px;bottom:64px;display:flex;align-items:stretch;
+  filter:drop-shadow(0 14px 18px oklch(24% .05 60 / .38)) drop-shadow(0 2px 3px oklch(24% .05 60 / .3))}
+.coupon,.stub{position:relative;background:var(--paper) var(--grain)}
+.coupon{width:640px;border-radius:var(--r) 0 0 var(--r);
+  -webkit-mask:radial-gradient(circle at 100% 0,#0000 15px,#000 15.5px) top/100% 51% no-repeat,radial-gradient(circle at 100% 100%,#0000 15px,#000 15.5px) bottom/100% 51% no-repeat;
+          mask:radial-gradient(circle at 100% 0,#0000 15px,#000 15.5px) top/100% 51% no-repeat,radial-gradient(circle at 100% 100%,#0000 15px,#000 15.5px) bottom/100% 51% no-repeat}
+.stub{width:268px;border-radius:0 var(--r) var(--r) 0;padding:0 26px 22px 30px;display:flex;flex-direction:column;
+  -webkit-mask:radial-gradient(circle at 0 0,#0000 15px,#000 15.5px) top/100% 51% no-repeat,radial-gradient(circle at 0 100%,#0000 15px,#000 15.5px) bottom/100% 51% no-repeat;
+          mask:radial-gradient(circle at 0 0,#0000 15px,#000 15.5px) top/100% 51% no-repeat,radial-gradient(circle at 0 100%,#0000 15px,#000 15.5px) bottom/100% 51% no-repeat}
+.stub::before{content:"";position:absolute;left:0;top:22px;bottom:22px;width:2px;
+  background:radial-gradient(circle,var(--perf) 1.6px,#0000 2px) 0 0/2px 10px repeat-y}
+
+.c-head{display:flex;align-items:center;justify-content:space-between;background:var(--navy);color:var(--paper);height:56px;padding:0 30px 0 32px}
+.c-head .show{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;letter-spacing:.09em;text-transform:uppercase}
+.c-head .show .ph{font-size:22px}
+.c-head .chan{font-size:20px;font-weight:700;letter-spacing:-.01em}
+.c-body{padding:24px 34px 26px 32px}
+.headline{font-size:38px;line-height:1.06;font-weight:700;letter-spacing:-.022em;text-wrap:balance;max-width:540px}
+.legs{list-style:none;padding:0;margin-top:20px;border-top:1px solid var(--rule)}
+.legs li{display:grid;grid-template-columns:34px 1fr;gap:0 10px;align-items:start;padding:10px 0;border-bottom:1px solid var(--rule)}
+.legs .ph{font-size:26px;color:var(--navy);margin-top:1px}
+.legs p{font-size:20px;line-height:1.28;font-weight:500;color:var(--ink);text-wrap:pretty}
+
+.s-top{display:flex;align-items:center;justify-content:space-between;height:56px;border-bottom:1px solid var(--rule);margin:0 -26px 0 -30px;padding:0 26px 0 30px}
+.s-top .lbl{font-size:13px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);display:flex;gap:7px;align-items:center}
+.s-top .lbl .ph{font-size:18px;color:var(--navy)}
+.route{display:block;width:100%;height:58px;margin-top:14px}
+.route text{font:700 12px "Hanken Grotesk";letter-spacing:.06em;fill:var(--ink-2)}
+.from{font-size:15px;font-weight:500;color:var(--ink-2);margin-top:4px}
+.who{font-size:27px;font-weight:700;letter-spacing:-.02em;line-height:1.05}
+.count{display:flex;align-items:baseline;gap:8px;margin-top:6px}
+.count b{font-size:72px;font-weight:700;line-height:.9;letter-spacing:-.03em;color:var(--carbon)}
+.count span{font-size:16px;font-weight:600;color:var(--carbon)}
+.prov{margin-top:auto;padding-top:14px;border-top:1px solid var(--rule);font-size:14px;line-height:1.35;font-weight:500;color:var(--carbon)}
+.engine{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:13px;font-weight:700;color:var(--paper);background:var(--carbon);padding:4px 9px 4px 7px;border-radius:var(--r)}
+.engine .ph{font-size:15px}
+
+.stamp{position:absolute;left:452px;top:84px;z-index:2;transform:rotate(-9deg);color:var(--red);
+  border:3px solid currentColor;border-radius:var(--r);padding:5px 12px 4px;text-align:center;
+  box-shadow:inset 0 0 0 2px var(--paper),inset 0 0 0 3.5px currentColor;opacity:.92;mix-blend-mode:multiply}
+.stamp b{display:block;font-size:30px;font-weight:800;letter-spacing:.12em;line-height:1}
+.stamp small{display:block;font-size:11px;font-weight:700;letter-spacing:.14em;margin-top:3px}
+
+/* ---------- SIGNATURE MOTION ---------- */
+.route .draw{stroke-dasharray:240;stroke-dashoffset:0}
+.play .coupon,.play .stub{animation:slideIn 280ms var(--ease) both}
+.play .stub{animation-delay:60ms}
+.play .legs li{animation:rise 240ms var(--ease) both;animation-delay:calc(220ms + var(--i)*30ms)}
+.play .route .draw{animation:draw 280ms var(--ease) 280ms both}
+.play .stamp{animation:stampDrop 150ms cubic-bezier(.5,0,.9,.4) 560ms both}
+.play .ticket-inner{animation:thud 140ms var(--ease) 710ms both}
+.tear .stub{animation:tearStub 220ms cubic-bezier(.5,0,.75,0) both}
+.tear .coupon{animation:outLeft 200ms cubic-bezier(.5,0,.75,0) 180ms both}
+.tear .stamp{animation:fadeOut 160ms linear both}
+.ticket-inner{display:flex;position:relative}
+.ticket .coupon::after,.ticket .stub::after{content:"";position:absolute;pointer-events:none;border:1.5px solid color-mix(in oklab,var(--navy) 38%,transparent);border-radius:3px}
+.ticket .coupon::after{inset:66px 22px 10px 10px}
+.ticket .stub::after{inset:66px 10px 10px 18px}
+@keyframes slideIn{from{transform:translateX(-120px);opacity:0}to{transform:none;opacity:1}}
+@keyframes rise{from{transform:translateY(6px);opacity:0}to{transform:none;opacity:1}}
+@keyframes draw{from{stroke-dashoffset:240}to{stroke-dashoffset:0}}
+@keyframes stampDrop{from{transform:rotate(-16deg) scale(1.7);opacity:0}to{transform:rotate(-9deg) scale(1);opacity:.92}}
+@keyframes thud{0%{transform:translateY(0)}35%{transform:translateY(4px)}100%{transform:translateY(0)}}
+@keyframes tearStub{to{transform:translate(70px,46px) rotate(9deg);opacity:0}}
+@keyframes outLeft{to{transform:translateX(-90px);opacity:0}}
+@keyframes fadeOut{to{opacity:0}}
+
+/* ---------- PANEL (check-in counter) ---------- */
+.panel{margin-top:40px;display:grid;grid-template-columns:minmax(220px,1fr) minmax(380px,1.35fr) minmax(260px,1.1fr);gap:16px;align-items:start}
+.desk-title{grid-column:1/-1;display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px solid var(--rule)}
+.desk-title h2{font-size:24px;font-weight:700;letter-spacing:-.02em}
+.desk-title p{font-size:14px;color:var(--ink-2)}
+.slip{background:var(--paper) var(--grain);border-radius:var(--r);padding:18px 20px;box-shadow:0 1px 0 var(--perf),0 8px 18px -14px oklch(24% .05 60 / .5)}
+.slip h3{font-size:13px;font-weight:700;color:var(--ink-2);display:flex;align-items:center;gap:7px;margin-bottom:12px}
+.slip h3 .ph{font-size:17px;color:var(--navy)}
+.status{list-style:none;padding:0}
+.status li{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--rule);font-size:15px;font-weight:600}
+.status li:first-child{border-top:0}
+.status .ph{font-size:20px;color:var(--navy)}
+.status .state{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ok)}
+.status .state.off{color:var(--red)}
+.dot{width:8px;height:8px;border-radius:50%;background:currentColor;animation:breathe 2.8s ease-in-out infinite}
+.status li:nth-child(2) .dot{animation-duration:3.7s}
+@keyframes breathe{50%{transform:scale(.6);opacity:.5}}
+.controls{display:grid;gap:8px;margin-top:16px}
+.btn{font:inherit;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;
+  border-radius:var(--r);border:1px solid color-mix(in oklab,var(--ink) 22%,transparent);background:var(--paper);color:var(--ink);cursor:pointer;
+  transition:transform 120ms var(--ease),background-color 150ms var(--ease),border-color 150ms var(--ease)}
+.btn .ph{font-size:19px}
+.btn:hover{background:var(--paper-3);border-color:color-mix(in oklab,var(--ink) 40%,transparent)}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn.primary{background:var(--navy);color:var(--paper);border-color:var(--navy)}
+.btn.primary:hover{background:var(--navy-2)}
+.btn.veto{color:var(--red);border-color:color-mix(in oklab,var(--red) 55%,transparent)}
+.btn.veto:hover{background:color-mix(in oklab,var(--red) 10%,var(--paper))}
+.btn.quiet{justify-content:flex-start}
+
+/* pending stub: same ticket primitive, miniature */
+.pending{display:flex;align-items:stretch;filter:drop-shadow(0 10px 14px oklch(24% .05 60 / .25))}
+.pending .coupon{width:auto;flex:1;-webkit-mask-size:100% 51%;mask-size:100% 51%}
+.pending .p-head{display:flex;justify-content:space-between;align-items:center;background:var(--navy);color:var(--paper);padding:10px 18px;font-size:13px;font-weight:700;gap:10px}
+.pending .p-head .tag{background:var(--red);padding:2px 7px;border-radius:4px;font-size:11px;letter-spacing:.06em}
+.pending .p-body{padding:14px 18px 16px}
+.pending .p-body h4{font-size:19px;line-height:1.15;font-weight:700;letter-spacing:-.015em}
+.pending .p-body p{font-size:13px;color:var(--ink-2);margin-top:8px;display:flex;align-items:center;gap:6px}
+.pending .stub{width:132px;padding:12px 14px 14px 18px;align-items:flex-start;justify-content:space-between}
+.timer-lbl{font-size:12px;font-weight:700;color:var(--ink-2);display:flex;align-items:center;gap:5px}
+.timer-lbl .ph{font-size:15px;color:var(--red);animation:spin 6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.timer{font-size:76px;font-weight:700;line-height:.85;letter-spacing:-.03em;color:var(--red)}
+.timer small{font-size:16px;font-weight:700;margin-left:3px;letter-spacing:0}
+.meter{height:4px;width:100%;background:var(--perf);border-radius:2px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--red);transform-origin:left;transform:scaleX(var(--p,1));transition:transform 1000ms linear}
+.decide{display:grid;grid-template-columns:1.4fr 1fr;gap:8px;margin-top:14px}
+.empty{padding:26px 18px;text-align:center;color:var(--ink-2);font-size:15px;border:1px dashed var(--perf);border-radius:var(--r);display:none}
+.empty .ph{font-size:26px;display:block;margin:0 auto 6px;color:var(--navy)}
+.pend-wrap.is-empty .pending,.pend-wrap.is-empty .decide{display:none}
+.pend-wrap.is-empty .empty{display:block}
+.note{font-size:13px;color:var(--ink-2);margin-top:10px;min-height:18px}
+
+.log{list-style:none;padding:0}
+.log li{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;padding:11px 0;border-top:1px solid var(--rule)}
+.log li:first-child{border-top:0;padding-top:2px}
+.log time{font-size:13px;font-weight:700;color:var(--ink-2);grid-row:span 2;padding-top:2px;min-width:58px}
+.log .h{font-size:15px;font-weight:600;line-height:1.25}
+.log .m{font-size:12.5px;color:var(--ink-2);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.log .m span{display:inline-flex;align-items:center;gap:4px}
+.log .m .ph{font-size:14px}
+.log .shown{color:var(--ok)} .log .vetoed{color:var(--red)}
+.log li.new{animation:rise 240ms var(--ease) both}
+
+.replay{position:absolute;right:12px;bottom:12px;z-index:3;min-height:36px;font-size:14px;background:color-mix(in oklab,var(--paper) 92%,transparent)}
+
+@media (max-width:1080px){
+  .panel{grid-template-columns:1fr 1fr}
+  .pend-slip{grid-column:1/-1;order:-1}
+  .desk-title{order:-2}
+}
+@media (max-width:640px){
+  body{padding:16px 16px 48px}
+  .panel{grid-template-columns:1fr;margin-top:24px}
+  .stage-tag{top:6px;right:6px;font-size:10px;padding:3px 6px}
+  .replay{right:6px;bottom:6px;min-height:30px;font-size:12px;padding:0 10px}
+  .timer{font-size:64px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <section class="stage" id="stage" aria-label="Stream preview with the Previously On card">
+    <div class="canvas" id="canvas">
+      <img class="game" src="reference-bg.png" alt="Cozy farm game on stream: greenhouse, wooden bridge and a forest trail">
+      <article class="ticket" id="ticket" aria-label="Previously On card">
+        <div class="ticket-inner">
+          <div class="coupon">
+            <header class="c-head">
+              <span class="show"><i class="ph ph-light ph-film-slate"></i>Previously on</span>
+              <span class="chan">MeadowMoth</span>
+            </header>
+            <div class="c-body">
+              <h1 class="headline">MeadowMoth fixed the greenhouse and opened the forest</h1>
+              <ol class="legs">
+                <li style="--i:0"><i class="ph ph-light ph-plant"></i><p>Greenhouse repaired after a full morning; a rare seed is being saved for it</p></li>
+                <li style="--i:1"><i class="ph ph-light ph-tree-evergreen"></i><p>Forest trail now open, with a tiny campsite found by the waterfall to mark on the map</p></li>
+                <li style="--i:2"><i class="ph ph-light ph-bridge"></i><p>Bridge still needs two boards from near the beach; in-game fishing contest is tomorrow</p></li>
+              </ol>
+            </div>
+          </div>
+          <aside class="stub">
+            <div class="s-top"><span class="lbl"><i class="ph ph-light ph-airplane-landing"></i>Arriving</span></div>
+            <svg class="route" viewBox="0 0 212 58" aria-hidden="true">
+              <defs><mask id="m"><path class="draw" d="M10 44 C 60 2, 150 2, 200 44" fill="none" stroke="#fff" stroke-width="6"/></mask></defs>
+              <path d="M10 44 C 60 2, 150 2, 200 44" fill="none" stroke="oklch(34% .09 262)" stroke-width="2" stroke-dasharray="2 6" stroke-linecap="round" mask="url(#m)"/>
+              <circle cx="10" cy="44" r="4.5" fill="none" stroke="oklch(34% .09 262)" stroke-width="2"/>
+              <circle cx="200" cy="44" r="5" fill="oklch(56% .19 28)"/>
+              <text x="0" y="58">BRB</text><text x="212" y="58" text-anchor="end">LIVE</text>
+            </svg>
+            <p class="from">Raid from</p>
+            <p class="who">PixelPantry</p>
+            <p class="count num"><b>12</b><span>viewers</span></p>
+            <p class="prov num">from 4 min of voice, 38 chat messages, 1 raid<br>
+              <span class="engine"><i class="ph ph-light ph-cpu"></i>AI recap</span></p>
+          </aside>
+          <div class="stamp" aria-hidden="true"><b>RECAP</b><small>CATCH UP</small></div>
+        </div>
+      </article>
+    </div>
+    <span class="stage-tag"><i class="ph ph-light ph-monitor"></i>OBS preview, 1920 x 1080</span>
+    <button class="btn replay" id="replay" type="button"><i class="ph ph-light ph-arrow-counter-clockwise"></i>Replay</button>
+  </section>
+
+  <section class="panel" aria-label="Streamer control panel">
+    <div class="desk-title">
+      <h2>Check-in desk</h2>
+      <p>Every card waits 5 s here before it goes on stream</p>
+    </div>
+
+    <div class="slip">
+      <h3><i class="ph ph-light ph-plugs-connected"></i>Connection</h3>
+      <ul class="status">
+        <li><i class="ph ph-light ph-broadcast"></i>Twitch<span class="state"><span class="dot"></span>Connected</span></li>
+        <li><i class="ph ph-light ph-microphone"></i>Voice capture<span class="state" id="voiceState"><span class="dot"></span>On</span></li>
+      </ul>
+      <div class="controls">
+        <button class="btn quiet" id="breakBtn" type="button"><i class="ph ph-light ph-coffee"></i>Going on break</button>
+        <button class="btn quiet" id="backBtn" type="button" disabled><i class="ph ph-light ph-door-open"></i>Back</button>
+        <button class="btn quiet" id="adBtn" type="button"><i class="ph ph-light ph-timer"></i>Simulate ad break (60 s)</button>
+      </div>
+    </div>
+
+    <div class="slip pend-slip">
+      <h3><i class="ph ph-light ph-ticket"></i>Waiting to board</h3>
+      <div class="pend-wrap" id="pendWrap">
+        <div class="pending">
+          <div class="coupon">
+            <div class="p-head"><span id="pTrigger">Raid from PixelPantry (12 viewers)</span><span class="tag" id="pSim" hidden>SIMULATED</span></div>
+            <div class="p-body">
+              <h4 id="pHead">MeadowMoth fixed the greenhouse and opened the forest</h4>
+              <p class="num"><i class="ph ph-light ph-list-numbers"></i>3 lines, from 4 min of voice, 38 chat messages, 1 raid</p>
+            </div>
+          </div>
+          <div class="stub">
+            <span class="timer-lbl"><i class="ph ph-light ph-hourglass-medium"></i>Auto-approves in</span>
+            <span class="timer num" id="timer" aria-live="polite">5<small>s</small></span>
+            <span class="meter"><i id="meter"></i></span>
+          </div>
+        </div>
+        <div class="decide">
+          <button class="btn primary" id="approveBtn" type="button"><i class="ph ph-light ph-check"></i>Approve now</button>
+          <button class="btn veto" id="vetoBtn" type="button"><i class="ph ph-light ph-x"></i>Veto</button>
+        </div>
+        <div class="empty"><i class="ph ph-light ph-ticket"></i>No card waiting. The next one appears after an ad break, a raid or a viewer's !catchup.</div>
+      </div>
+      <p class="note" id="note" aria-live="polite"></p>
+    </div>
+
+    <div class="slip">
+      <h3><i class="ph ph-light ph-clock-counter-clockwise"></i>Last 3 cards</h3>
+      <ol class="log" id="log">
+        <li><time class="num">9:12 pm</time><span class="h">MeadowMoth found the waterfall and lost the fishing rod</span>
+          <span class="m"><span><i class="ph ph-light ph-chat-circle-text"></i>!catchup</span><span class="shown"><i class="ph ph-light ph-check-circle"></i>Shown</span></span></li>
+        <li><time class="num">8:47 pm</time><span class="h">Morning chores done, greenhouse glass ordered</span>
+          <span class="m"><span><i class="ph ph-light ph-timer"></i>Ad break ended</span><span class="shown"><i class="ph ph-light ph-check-circle"></i>Shown</span></span></li>
+        <li><time class="num">8:21 pm</time><span class="h">Chat voted to rename the cow Biscuit</span>
+          <span class="m"><span><i class="ph ph-light ph-door-open"></i>Back from break</span><span class="vetoed"><i class="ph ph-light ph-x-circle"></i>Vetoed</span></span></li>
+      </ol>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  const stage = document.getElementById('stage'), canvas = document.getElementById('canvas'), ticket = document.getElementById('ticket');
+  const fit = () => { canvas.style.transform = `scale(${stage.clientWidth / 1920})`; };
+  new ResizeObserver(fit).observe(stage); fit();
+
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const enter = () => { ticket.classList.remove('tear','play'); void ticket.offsetWidth; ticket.style.visibility = ''; ticket.classList.add('play'); };
+  const tearOff = () => {
+    if (reduce) { ticket.style.visibility = 'hidden'; return; }
+    ticket.classList.remove('play'); void ticket.offsetWidth; ticket.classList.add('tear');
+    setTimeout(() => { ticket.style.visibility = 'hidden'; }, 420);
+  };
+  document.getElementById('replay').addEventListener('click', enter);
+
+  const $ = id => document.getElementById(id);
+  const wrap = $('pendWrap'), note = $('note'), timer = $('timer'), meter = $('meter');
+  let left = 5, tick = null, onBreak = false;
+  const pending = { trigger: 'Raid from PixelPantry (12 viewers)', head: 'MeadowMoth fixed the greenhouse and opened the forest', sim: false };
+
+  const render = () => { timer.innerHTML = `${left}<small>s</small>`; meter.style.setProperty('--p', left / 5); };
+  const stop = () => { clearInterval(tick); tick = null; };
+  const start = () => {
+    stop(); left = 5; wrap.classList.remove('is-empty'); render();
+    tick = setInterval(() => { left -= 1; render(); if (left <= 0) decide(true, 'Auto-approved after 5 s'); }, 1000);
+  };
+  const addLog = (shown) => {
+    const log = $('log'), li = document.createElement('li'), now = new Date();
+    const t = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+    li.className = 'new';
+    li.innerHTML = `<time class="num"></time><span class="h"></span><span class="m"><span><i class="ph ph-light ph-arrow-right"></i></span><span class="${shown ? 'shown' : 'vetoed'}"><i class="ph ph-light ${shown ? 'ph-check-circle' : 'ph-x-circle'}"></i>${shown ? 'Shown' : 'Vetoed'}</span></span>`;
+    li.querySelector('time').textContent = t;
+    li.querySelector('.h').textContent = pending.head;
+    li.querySelector('.m span').append(pending.trigger);
+    log.prepend(li);
+    while (log.children.length > 3) log.lastElementChild.remove();
+  };
+  const decide = (shown, msg) => {
+    stop(); wrap.classList.add('is-empty'); addLog(shown); note.textContent = msg;
+    shown ? enter() : tearOff();
+  };
+  const queue = (trigger, sim) => {
+    pending.trigger = trigger; pending.sim = sim;
+    $('pTrigger').textContent = trigger; $('pSim').hidden = !sim; note.textContent = ''; start();
+  };
+
+  $('approveBtn').addEventListener('click', () => decide(true, 'Approved. On stream for 15 s and posted in chat.'));
+  $('vetoBtn').addEventListener('click', () => decide(false, 'Vetoed. Nothing was shown or posted.'));
+  $('breakBtn').addEventListener('click', () => {
+    onBreak = true; stop(); wrap.classList.add('is-empty');
+    $('breakBtn').disabled = true; $('backBtn').disabled = false;
+    $('voiceState').className = 'state off'; $('voiceState').lastChild.textContent = 'Paused';
+    note.textContent = 'On break. Voice capture paused until you are back.';
+  });
+  $('backBtn').addEventListener('click', () => {
+    onBreak = false; $('breakBtn').disabled = false; $('backBtn').disabled = true;
+    $('voiceState').className = 'state'; $('voiceState').lastChild.textContent = 'On';
+    queue('Back from break', false);
+  });
+  $('adBtn').addEventListener('click', () => { if (!onBreak) queue('Ad break ended (60 s)', true); });
+
+  start();
+})();
+</script>
+</body>
+</html>

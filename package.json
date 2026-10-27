@@ -1,0 +1,24 @@
+{
+  "name": "previously-on",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node --env-file=.env src/main.js",
+    "demo": "node --env-file-if-exists=.env src/demo.js",
+    "check-twitch": "node --env-file=.env src/check-twitch.js",
+    "eval": "node --env-file-if-exists=.env src/eval.js",
+    "live-report": "node src/live-report.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@fontsource-variable/hanken-grotesk": "^5.3.0",
+    "@phosphor-icons/web": "^2.1.2",
+    "openai": "^6.49.0",
+    "ws": "^8.18.3",
+    "zod": "^4.6.7"
+  }
+}

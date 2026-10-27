@@ -1,0 +1,76 @@
+:root {
+  --paper: oklch(96% .012 85);
+  --paper-2: oklch(92.5% .016 85);
+  --paper-3: oklch(89% .02 85);
+  --ink: oklch(24% .03 260);
+  --ink-2: oklch(42% .03 260);
+  --navy: oklch(34% .09 262);
+  --navy-2: oklch(42% .1 262);
+  --red: oklch(56% .19 28);
+  --carbon: oklch(42% .11 300);
+  --perf: oklch(84% .015 85);
+  --rule: color-mix(in oklab, var(--ink) 14%, transparent);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .2 0 0 0 0 .18 0 0 0 0 .14 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --ease: cubic-bezier(.23, 1, .32, 1);
+}
+* { box-sizing: border-box; }
+html, body { width: 1920px; height: 1080px; margin: 0; overflow: hidden; background: transparent; color: var(--ink); font-family: "Hanken Grotesk", sans-serif; }
+body { position: relative; }
+[hidden] { display: none !important; }
+.demo-tag { position: fixed; z-index: 5; top: 24px; right: 24px; padding: 6px 10px; border-radius: 4px; color: var(--paper); background: var(--navy); font-size: 13px; font-weight: 700; letter-spacing: .09em; }
+.ticket { position: fixed; left: 48px; bottom: 48px; width: 640px; max-width: 640px; max-height: 380px; filter: drop-shadow(0 14px 18px oklch(24% .05 60 / .38)) drop-shadow(0 2px 3px oklch(24% .05 60 / .3)); }
+.ticket-inner { display: flex; align-items: stretch; position: relative; max-height: 380px; }
+.coupon, .stub { position: relative; background: var(--paper) var(--grain); }
+.coupon { width: 452px; min-width: 452px; border-radius: 6px 0 0 6px; overflow: hidden; -webkit-mask: radial-gradient(circle at 100% 0, #0000 10px, #000 10.5px) top/100% 51% no-repeat, radial-gradient(circle at 100% 100%, #0000 10px, #000 10.5px) bottom/100% 51% no-repeat; mask: radial-gradient(circle at 100% 0, #0000 10px, #000 10.5px) top/100% 51% no-repeat, radial-gradient(circle at 100% 100%, #0000 10px, #000 10.5px) bottom/100% 51% no-repeat; }
+.stub { width: 188px; min-width: 188px; padding: 0 13px 72px 18px; border-radius: 0 6px 6px 0; display: flex; flex-direction: column; -webkit-mask: radial-gradient(circle at 0 0, #0000 10px, #000 10.5px) top/100% 51% no-repeat, radial-gradient(circle at 0 100%, #0000 10px, #000 10.5px) bottom/100% 51% no-repeat; mask: radial-gradient(circle at 0 0, #0000 10px, #000 10.5px) top/100% 51% no-repeat, radial-gradient(circle at 0 100%, #0000 10px, #000 10.5px) bottom/100% 51% no-repeat; }
+.stub::before { content: ""; position: absolute; left: 0; top: 16px; bottom: 16px; width: 2px; background: radial-gradient(circle, var(--perf) 1.4px, #0000 2px) 0 0/2px 9px repeat-y; }
+.coupon-head { height: 44px; padding: 0 18px 0 22px; display: flex; align-items: center; justify-content: space-between; background: var(--navy); color: var(--paper); }
+.show-mark { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; letter-spacing: .09em; }
+.show-mark i { font-size: 19px; }
+.channel-name { max-width: 210px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; font-weight: 700; }
+.coupon-body { position: relative; z-index: 1; padding: 18px 24px 18px 22px; }
+.headline { width: 100%; max-width: none; margin: 0; font-size: 30px; line-height: 1.06; font-weight: 700; letter-spacing: -.022em; text-wrap: balance; }
+.bullets { list-style: none; margin: 15px 0 0; padding: 0; border-top: 1px solid var(--rule); }
+.bullet { display: grid; grid-template-columns: 24px 1fr; align-items: start; gap: 0; padding: 8px 0; border-bottom: 1px solid var(--rule); opacity: 1; }
+.bullet i { padding-top: 2px; color: var(--navy); font-size: 19px; }
+.bullet p { margin: 0; font-size: 17px; line-height: 1.28; font-weight: 500; text-wrap: pretty; }
+.stub-label { height: 44px; margin: 0 -13px 0 -18px; padding: 0 10px 0 18px; border-bottom: 1px solid var(--rule); display: flex; align-items: center; justify-content: space-between; gap: 5px; color: var(--ink-2); font-size: 11px; font-weight: 700; letter-spacing: .09em; }
+.stub-label span { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.stub-label i { color: var(--navy); font-size: 16px; }
+.stub-label b { padding: 4px 5px; border-radius: 4px; color: var(--paper); background: var(--red); font-size: 9px; letter-spacing: .08em; }
+.route { width: 100%; height: 40px; margin-top: 8px; overflow: visible; }
+.route text { fill: var(--ink-2); font: 700 9px "Hanken Grotesk", sans-serif; letter-spacing: .06em; }
+.route path { fill: none; stroke: var(--navy-2); stroke-width: 1.5; stroke-dasharray: 2 4; stroke-dashoffset: 160; }
+.route circle { fill: var(--navy); }
+.trigger-small { margin: 3px 0 0; color: var(--ink-2); font-size: 13px; line-height: 1.1; }
+.trigger-name { max-width: 155px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 2px 0 0; font-size: 22px; line-height: 1.05; font-weight: 700; letter-spacing: -.02em; }
+.trigger-count { display: flex; align-items: baseline; gap: 5px; margin-top: 3px; color: var(--carbon); }
+.trigger-count b { font-size: 48px; line-height: .9; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums lining-nums slashed-zero; }
+.trigger-count span { font-size: 13px; font-weight: 600; }
+.provenance { margin: 10px 0 0; padding-top: 8px; border-top: 1px solid var(--rule); color: var(--carbon); font-size: 11px; line-height: 1.3; font-weight: 500; }
+.engine-tag { align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; margin-top: 7px; padding: 4px 7px; border-radius: 4px; color: var(--paper); background: var(--carbon); font-size: 10px; line-height: 1; font-weight: 700; }
+.engine-tag i { font-size: 12px; }
+.stamp { position: absolute; left: 438px; top: auto; bottom: 8px; z-index: 3; transform: rotate(-9deg); color: var(--red); border: 2px solid currentColor; border-radius: 5px; padding: 4px 8px 3px; text-align: center; box-shadow: inset 0 0 0 1px var(--paper), inset 0 0 0 2px currentColor; opacity: .92; mix-blend-mode: multiply; }
+.stamp b { display: block; font-size: 21px; line-height: 1; font-weight: 800; letter-spacing: .12em; }
+.stamp small { display: block; margin-top: 2px; font-size: 8px; font-weight: 700; letter-spacing: .14em; }
+.coupon::after, .stub::after { content: ""; position: absolute; inset: 52px 8px 8px; pointer-events: none; border: 1px solid color-mix(in oklab, var(--navy) 38%, transparent); border-radius: 3px; }
+.stub::after { inset: 52px 7px 8px 12px; }
+.ticket.play .coupon, .ticket.play .stub { animation: slideIn 280ms var(--ease) both; }
+.ticket.play .stub { animation-delay: 60ms; }
+.ticket.play .bullet { animation: rise 240ms var(--ease) both; animation-delay: calc(220ms + var(--index) * 30ms); }
+.ticket.play .route path { animation: draw 280ms var(--ease) 280ms both; }
+.ticket.play .stamp { animation: stampDrop 150ms cubic-bezier(.5, 0, .9, .4) 560ms both; }
+.ticket.play .ticket-inner { animation: thud 140ms var(--ease) 710ms both; }
+.ticket.exit .coupon { animation: outLeft 200ms cubic-bezier(.5, 0, .75, 0) both; }
+.ticket.tear .stub { animation: tearStub 220ms cubic-bezier(.5, 0, .75, 0) both; }
+.ticket.tear .coupon { animation: outLeft 200ms cubic-bezier(.5, 0, .75, 0) 180ms both; }
+.ticket.tear .stamp { animation: fadeOut 160ms linear both; }
+@keyframes slideIn { from { transform: translateX(-120px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes rise { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes stampDrop { from { transform: rotate(-16deg) scale(1.7); opacity: 0; } to { transform: rotate(-9deg) scale(1); opacity: .92; } }
+@keyframes thud { 0%, 100% { transform: translateY(0); } 35% { transform: translateY(4px); } }
+@keyframes tearStub { to { transform: translate(70px, 46px) rotate(9deg); opacity: 0; } }
+@keyframes outLeft { to { transform: translateX(-90px); opacity: 0; } }
+@keyframes fadeOut { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0ms !important; transition-duration: .01ms !important; } .route path { stroke-dashoffset: 0; } }

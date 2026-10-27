@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Previously On Overlay</title>
+  <link rel="stylesheet" href="/fonts.css">
+  <link rel="stylesheet" href="/assets/phosphor-light.css">
+  <link rel="stylesheet" href="/overlay.css">
+  <script src="/overlay.js" defer></script>
+</head>
+<body>
+  <div class="demo-tag" id="demo-tag" hidden>DEMO REPLAY</div>
+  <main class="overlay-stage" aria-live="polite" aria-atomic="true">
+    <article class="ticket" id="ticket" hidden>
+      <div class="ticket-inner">
+        <section class="coupon">
+          <header class="coupon-head">
+            <span class="show-mark"><i class="ph-light ph-film-slate" aria-hidden="true"></i> PREVIOUSLY ON</span>
+            <span class="channel-name" id="channel-name"></span>
+          </header>
+          <div class="coupon-body">
+            <h1 class="headline" id="headline"></h1>
+            <ul class="bullets" id="bullets"></ul>
+          </div>
+        </section>
+        <aside class="stub">
+          <div class="stub-label"><span><i class="ph-light ph-airplane-landing" aria-hidden="true"></i> ARRIVING</span><b id="simulated-tag" hidden>SIMULATED</b></div>
+          <svg class="route" viewBox="0 0 150 40" role="img" aria-label="Route from BRB to LIVE">
+            <text x="1" y="13">BRB</text>
+            <path class="route-line" d="M13 28 C38 4 77 4 108 28"></path>
+            <circle cx="13" cy="28" r="3"></circle>
+            <circle cx="108" cy="28" r="3"></circle>
+            <text x="117" y="32">LIVE</text>
+          </svg>
+          <p class="trigger-small" id="trigger-small"></p>
+          <p class="trigger-name" id="trigger-name"></p>
+          <div class="trigger-count" id="trigger-count" hidden><b></b><span></span></div>
+          <p class="provenance" id="provenance"></p>
+          <span class="engine-tag" id="engine-tag"></span>
+        </aside>
+        <div class="stamp" id="stamp"><b>RECAP</b><small>CATCH UP</small></div>
+      </div>
+    </article>
+  </main>
+</body>
+</html>
