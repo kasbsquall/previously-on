@@ -41,6 +41,35 @@ function makeHarness(options = {}) {
   return { pipeline, clock, stored, sent, sourceBuffer };
 }
 
+function waitForReadyAdBreak(pipeline) {
+  const current = pipeline.getState().pending;
+  if (current?.trigger === 'ad-break' && !current.building) return Promise.resolve(current);
+  return new Promise(resolve => {
+    const listener = card => {
+      if (card.trigger !== 'ad-break' || card.building) return;
+      pipeline.off('pending', listener);
+      resolve(card);
+    };
+    pipeline.on('pending', listener);
+  });
+}
+
+function recapFromAdWindow({ items }) {
+  const content = items.filter(item => ['chat', 'voice', 'note'].includes(item.kind));
+  const source = content.at(-1);
+  return {
+    headline: 'The greenhouse is ready.',
+    bullets: source ? [{ text: source.text, sources: [source.id] }] : [],
+    provenance: {
+      voiceSeconds: 0,
+      chatCount: content.filter(item => item.kind === 'chat').length,
+      eventCount: items.filter(item => item.kind === 'event').length,
+      noteCount: content.filter(item => item.kind === 'note').length
+    },
+    engine: 'fallback', latencyMs: 1
+  };
+}
+
 function makeClock(initial) {
   let nextId = 0;
   const timers = new Map();
@@ -331,16 +360,135 @@ test('an ad break widens its window from three to ten minutes when the narrow wi
     };
   } });
   await sourceBuffer.add({ t: new Date(start - 8 * 60_000).toISOString(), kind: 'voice', text: 'The forest path is open.', user: 'MeadowMoth' });
+  const pendingPromise = waitForReadyAdBreak(pipeline);
   await pipeline.handleAdBreak({
     duration_seconds: 1,
     started_at: new Date(start).toISOString(),
     requester_user_name: 'MeadowMoth'
-  }, { timeScale: 0 });
-  await clock.advance(0);
-  await new Promise(resolve => setImmediate(resolve));
+  }, { timeScale: 1 });
+  const pending = await pendingPromise;
   assert.equal(recapItems.some(item => item.kind === 'voice'), true);
-  assert.equal(pipeline.getState().pending.trigger, 'ad-break');
-  assert.equal(pipeline.getState().pending.bullets[0].text, 'The forest path is open.');
+  assert.equal(pending.trigger, 'ad-break');
+  assert.equal(pending.bullets[0].text, 'The forest path is open.');
+});
+
+test('an ad-break card approved during the ad airs and posts only when the ad ends', async () => {
+  const { pipeline, clock, sent } = makeHarness({ recap: recapFromAdWindow });
+  const shown = [];
+  pipeline.on('card:show', card => shown.push(card));
+  await pipeline.addNote('The north path is open.');
+  const pendingPromise = waitForReadyAdBreak(pipeline);
+  await pipeline.handleAdBreak({ duration_seconds: 60, started_at: new Date(start).toISOString(), requester_user_name: 'MeadowMoth' }, { timeScale: 1 });
+  const pending = await pendingPromise;
+  assert.equal(pending.remainingMs, 60_000);
+  assert.equal(await pipeline.approve(pending.id), true);
+  assert.equal(pipeline.getState().pending.approved, true);
+  assert.equal(shown.length, 0);
+  assert.equal(sent.length, 0);
+  await clock.advance(60_000);
+  assert.equal(shown.length, 1);
+  assert.equal(sent.length, 1);
+});
+
+test('veto during an ad keeps the recap from airing or posting at ad end', async () => {
+  const { pipeline, clock, sent } = makeHarness({ recap: recapFromAdWindow });
+  const shown = [];
+  pipeline.on('card:show', card => shown.push(card));
+  await pipeline.addNote('The north path is open.');
+  const pendingPromise = waitForReadyAdBreak(pipeline);
+  await pipeline.handleAdBreak({ duration_seconds: 60, started_at: new Date(start).toISOString(), requester_user_name: 'MeadowMoth' }, { timeScale: 1 });
+  const pending = await pendingPromise;
+  assert.equal(pipeline.veto(pending.id), true);
+  assert.equal(pipeline.getState().pending.status, 'Vetoed');
+  await clock.advance(60_000);
+  assert.equal(pipeline.getState().pending, null);
+  assert.equal(shown.length, 0);
+  assert.equal(sent.length, 0);
+});
+
+test('hold mode requires approval before ad end', async () => {
+  const { pipeline, clock, sent } = makeHarness({ recap: recapFromAdWindow });
+  const shown = [];
+  pipeline.on('card:show', card => shown.push(card));
+  await pipeline.setApprovalSettings({ mode: 'hold' });
+  await pipeline.addNote('The north path is open.');
+  const pendingPromise = waitForReadyAdBreak(pipeline);
+  await pipeline.handleAdBreak({ duration_seconds: 60, started_at: new Date(start).toISOString(), requester_user_name: 'MeadowMoth' }, { timeScale: 1 });
+  const pending = await pendingPromise;
+  await clock.advance(60_000);
+  assert.equal(pipeline.getState().pending, null);
+  assert.equal(shown.length, 0);
+  assert.equal(sent.length, 0);
+
+  const secondStart = clock.now;
+  await pipeline.addNote('The cottage roof is finished.');
+  const secondPendingPromise = waitForReadyAdBreak(pipeline);
+  await pipeline.handleAdBreak({ duration_seconds: 60, started_at: new Date(secondStart).toISOString(), requester_user_name: 'MeadowMoth' }, { timeScale: 1 });
+  const approved = await secondPendingPromise;
+  await pipeline.approve(approved.id);
+  assert.equal(shown.length, 0);
+  await clock.advance(60_000);
+  assert.equal(shown.length, 1);
+  assert.equal(sent.length, 1);
+});
+
+test('a recap still building at ad end airs when ready within the ten-second grace period', async () => {
+  let resolveRecap;
+  let recapStarted;
+  const started = new Promise(resolve => { recapStarted = resolve; });
+  const recap = ({ items }) => {
+    recapStarted();
+    const note = items.find(item => item.kind === 'note');
+    return new Promise(resolve => { resolveRecap = () => resolve({
+      headline: 'The greenhouse is ready.',
+      bullets: [{ text: note.text, sources: [note.id] }],
+      provenance: { voiceSeconds: 0, chatCount: 0, eventCount: 0, noteCount: 1 },
+      engine: 'model', latencyMs: 20
+    }); });
+  };
+  const deferredHarness = makeHarness({ recap });
+  const shown = [];
+  deferredHarness.pipeline.on('card:show', card => shown.push(card));
+  await deferredHarness.pipeline.addNote('The north path is open.');
+  const pendingPromise = waitForReadyAdBreak(deferredHarness.pipeline);
+  await deferredHarness.pipeline.handleAdBreak({ duration_seconds: 1, started_at: new Date(start).toISOString(), requester_user_name: 'MeadowMoth' }, { timeScale: 1 });
+  await started;
+  await deferredHarness.clock.advance(1000);
+  assert.equal(deferredHarness.pipeline.getState().pending.adBreakPhase, 'finishing');
+  resolveRecap();
+  const pending = await pendingPromise;
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(deferredHarness.pipeline.getState().onAir.id, pending.id);
+  assert.equal(deferredHarness.sent.length, 1);
+  assert.equal(shown.length, 1);
+});
+
+test('an ad-break recap still building after the ten-second grace period is dropped', async () => {
+  let resolveRecap;
+  let recapStarted;
+  const started = new Promise(resolve => { recapStarted = resolve; });
+  const recap = ({ items }) => {
+    recapStarted();
+    const note = items.find(item => item.kind === 'note');
+    return new Promise(resolve => { resolveRecap = () => resolve({
+      headline: 'The greenhouse is ready.',
+      bullets: [{ text: note.text, sources: [note.id] }],
+      provenance: { voiceSeconds: 0, chatCount: 0, eventCount: 0, noteCount: 1 },
+      engine: 'model', latencyMs: 20
+    }); });
+  };
+  const { pipeline, clock, sent } = makeHarness({ recap });
+  await pipeline.addNote('The north path is open.');
+  await pipeline.handleAdBreak({ duration_seconds: 1, started_at: new Date(start).toISOString(), requester_user_name: 'MeadowMoth' }, { timeScale: 1 });
+  await started;
+  await clock.advance(1000);
+  await clock.advance(10_000);
+  assert.equal(pipeline.getState().pending, null);
+  assert.equal(pipeline.getState().cards[0].status, 'Dropped');
+  resolveRecap();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(pipeline.getState().onAir, null);
+  assert.equal(sent.length, 0);
 });
 
 test('approved catch-up replies to the triggering chat message', async () => {

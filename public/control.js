@@ -195,6 +195,7 @@ function renderPending() {
 
   const top = document.createElement('div');
   top.className = 'pending-top';
+  const isAdBreak = card.trigger === 'ad-break';
   const trigger = document.createElement('span');
   trigger.textContent = triggerName(card.trigger);
   top.append(trigger);
@@ -205,7 +206,7 @@ function renderPending() {
     top.append(tag);
   }
   const status = document.createElement('span');
-  status.textContent = 'WAITING';
+  status.textContent = card.vetoed ? 'VETOED' : card.approved ? (isAdBreak ? 'APPROVED FOR BREAK END' : 'APPROVED') : card.building ? 'BUILDING' : 'WAITING';
   top.append(status);
 
   const mini = document.createElement('div');
@@ -213,9 +214,11 @@ function renderPending() {
   const coupon = document.createElement('div');
   coupon.className = 'mini-coupon';
   const headline = document.createElement('h3');
-  headline.textContent = card.headline;
+  headline.textContent = card.headline || 'Preparing the recap.';
   const lineInfo = document.createElement('p');
-  lineInfo.textContent = `${card.bullets.length} recap ${card.bullets.length === 1 ? 'line' : 'lines'}`;
+  lineInfo.textContent = card.building
+    ? card.adBreakPhase === 'finishing' ? 'The ad ended; waiting for the recap.' : 'Using moments from before the ad.'
+    : `${card.bullets.length} recap ${card.bullets.length === 1 ? 'line' : 'lines'}`;
   const provenance = document.createElement('p');
   provenance.textContent = formatProvenance(card.provenance);
   coupon.append(headline, lineInfo, provenance);
@@ -224,8 +227,10 @@ function renderPending() {
   stub.className = 'mini-stub';
   const countdownLabel = document.createElement('span');
   countdownLabel.className = 'countdown-label';
-  const heldForApproval = card.approvalMode === 'hold';
-  countdownLabel.textContent = heldForApproval ? 'Waiting for approval' : 'Auto-approves in';
+  const heldForApproval = !isAdBreak && card.approvalMode === 'hold';
+  countdownLabel.textContent = isAdBreak
+    ? card.adBreakPhase === 'finishing' ? 'Recap ready within' : 'Airs when the ad break ends'
+    : heldForApproval ? 'Waiting for approval' : 'Auto-approves in';
   const countdown = document.createElement('b');
   countdown.className = 'countdown';
   countdown.textContent = String(Math.ceil((card.remainingMs ?? (card.approvalSeconds ?? 5) * 1000) / 1000));
@@ -254,8 +259,13 @@ function renderPending() {
   const actions = document.createElement('div');
   actions.className = 'pending-actions';
   const approve = makeButton('Approve now', 'ph-check', 'button primary');
+  if (card.approved) {
+    approve.disabled = true;
+    approve.textContent = 'Approved';
+  }
   approve.addEventListener('click', () => void post('/api/approve', { cardId: card.id }).catch(error => showError(error.message)));
   const veto = makeButton('Veto', 'ph-x', 'button veto');
+  veto.disabled = Boolean(card.vetoed);
   veto.addEventListener('click', () => {
     box.classList.add('tear');
     veto.disabled = true;
@@ -386,7 +396,7 @@ function formatProvenance(provenance) {
 }
 
 function triggerName(trigger) {
-  return ({ raid: 'Raid', catchup: '!catchup', break: 'Back from break', 'ad-break': 'Ad break ended' })[trigger] ?? trigger;
+  return ({ raid: 'Raid', catchup: '!catchup', break: 'Back from break', 'ad-break': 'Ad break' })[trigger] ?? trigger;
 }
 
 function makeButton(label, iconName, className) {

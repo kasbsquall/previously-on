@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { citedSourcesForCard, initialCardPlayback, overlayCardForReplay } from '../web-demo/replay-adapter.js';
+import { AD_BREAK_PREVIEW_MS } from '../web-demo/replay-adapter.js';
 import { validateRecording } from '../web-demo/recording-schema.js';
 
 function sampleRecording() {
@@ -46,4 +48,10 @@ test('replay adapter feeds the shared overlay with cached audio and exposes cite
 test('initial ad-break replay is silent and reduced-motion mode skips entry animation', () => {
   assert.deepEqual(initialCardPlayback(false), { animate: true, muteAudio: true });
   assert.deepEqual(initialCardPlayback(true), { animate: false, muteAudio: true });
+});
+
+test('source lines default to hidden and ad-break preview stays under three seconds', async () => {
+  const css = await readFile(new URL('../web-demo/demo.css', import.meta.url), 'utf8');
+  assert.match(css, /\[hidden\]\s*\{\s*display:\s*none\s*!important\s*;/u);
+  assert.ok(AD_BREAK_PREVIEW_MS < 3000);
 });

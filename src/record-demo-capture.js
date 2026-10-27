@@ -2,7 +2,7 @@ export async function captureRecordedCard(pipeline, { trigger, action, audioTime
   let listener;
   const pendingEvent = new Promise(resolve => {
     listener = pending => {
-      if (pending.trigger !== trigger) return;
+      if (pending.trigger !== trigger || pending.building) return;
       pipeline.off('pending', listener);
       resolve(pending);
     };
@@ -20,7 +20,27 @@ export async function captureRecordedCard(pipeline, { trigger, action, audioTime
   if (pending.trigger !== trigger) throw new Error(`Expected ${trigger}, received ${pending.trigger}.`);
   const audio = await pipeline.waitForAudio(pending.id, audioTimeoutMs);
   if (!audio) throw new Error(`Narrator audio was not ready for ${trigger}.`);
-  await pipeline.approve(pending.id);
+  if (trigger === 'ad-break') {
+    let airedEvent;
+    const aired = new Promise(resolve => {
+      airedEvent = card => {
+        if (card.id !== pending.id) return;
+        pipeline.off('card:show', airedEvent);
+        resolve();
+      };
+      pipeline.on('card:show', airedEvent);
+    });
+    try {
+      await pipeline.approve(pending.id);
+      if (pipeline.getState().onAir?.id === pending.id) pipeline.off('card:show', airedEvent);
+      else await aired;
+    } catch (error) {
+      pipeline.off('card:show', airedEvent);
+      throw error;
+    }
+  } else {
+    await pipeline.approve(pending.id);
+  }
   const card = pipeline.getState().cards.find(item => item.id === pending.id);
   if (card?.engine !== 'model') throw new Error(`${trigger} recap did not use the OpenAI model.`);
   if (!card.audioUrl) throw new Error(`Narrator audio was not attached to ${trigger}.`);

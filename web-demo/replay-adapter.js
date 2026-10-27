@@ -16,6 +16,8 @@ export function initialCardPlayback(prefersReducedMotion) {
   return { animate: !prefersReducedMotion, muteAudio: true };
 }
 
+export const AD_BREAK_PREVIEW_MS = 1500;
+
 if (typeof document !== 'undefined') void startBrowserReplay();
 
 async function startBrowserReplay() {
@@ -26,9 +28,11 @@ async function startBrowserReplay() {
   const stage = document.querySelector('#stage');
   const soundToggle = document.querySelector('#sound-toggle');
   const soundLabel = soundToggle.parentElement;
+  const adBreakPreview = document.querySelector('#ad-break-preview');
   let recording;
   let activeCard = null;
   let overlayReady = false;
+  let adBreakPreviewTimer;
 
   function send(type, data = {}) {
     frame.contentWindow?.postMessage({ type, ...data }, location.origin);
@@ -82,11 +86,22 @@ async function startBrowserReplay() {
   });
   for (const button of buttons) button.addEventListener('click', () => {
     if (!recording) return;
+    window.clearTimeout(adBreakPreviewTimer);
+    adBreakPreview.hidden = true;
     activeCard = recording.cards.find(card => card.trigger === button.dataset.trigger);
     if (!activeCard) return;
-    send('previously-on:settings', { soundEffectsEnabled: soundToggle.checked });
-    send('previously-on:show', { card: overlayCardForReplay(activeCard) });
     renderSources(activeCard, sourcePanel);
+    const replayCard = () => {
+      adBreakPreview.hidden = true;
+      send('previously-on:settings', { soundEffectsEnabled: soundToggle.checked });
+      send('previously-on:show', { card: overlayCardForReplay(activeCard) });
+    };
+    if (activeCard.trigger === 'ad-break') {
+      adBreakPreview.hidden = false;
+      adBreakPreviewTimer = window.setTimeout(replayCard, AD_BREAK_PREVIEW_MS);
+    } else {
+      replayCard();
+    }
   });
   document.querySelector('#sources-toggle').addEventListener('change', event => {
     sourcePanel.hidden = !event.target.checked || !activeCard;

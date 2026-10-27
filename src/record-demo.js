@@ -33,7 +33,7 @@ const pipeline = createCardPipeline({
   broadcasterId: 'demo-broadcaster',
   mode: 'demo',
   now: () => streamClock,
-  adBreakTimeScale: 0,
+  adBreakTimeScale: 0.5,
   featureSettings: { get: () => ({ narratorVoice: true, soundEffects: true }), set: async value => value },
   approvalSettings: { get: () => ({ mode: 'hold', seconds: null }), set: async value => value },
   narrator,

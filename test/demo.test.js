@@ -32,9 +32,9 @@ test('the demo replay places fixture sources in time for its simulated ad-break 
 
   await pipeline.simulateAdBreak();
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(pipeline.getState().pending?.trigger, 'ad-break');
-  assert.ok(pipeline.getState().pending.bullets.length > 0);
-  assert.ok(pipeline.getState().pending.sourceDetails.some(source => ['voice', 'note', 'chat'].includes(source.kind)));
+  assert.equal(pipeline.getState().onAir?.trigger, 'ad-break');
+  assert.ok(pipeline.getState().onAir.bullets.length > 0);
+  assert.ok(pipeline.getState().onAir.sourceDetails.some(source => ['voice', 'note', 'chat'].includes(source.kind)));
 });
 
 test('demo preloads three fixture minutes across the preceding three minutes and feeds the first raid model facts', async t => {
