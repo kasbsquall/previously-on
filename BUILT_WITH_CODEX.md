@@ -33,7 +33,7 @@ The prompt records are in [`docs/codex-prompts/`](docs/codex-prompts/). Each one
 
 ## Commits
 
-Commits marked "Written by OpenAI Codex" contain only Codex's code. The others hold the spec, the design direction and recorded results. Run `git log` to see them all.
+The first commit holds the state after prompt 8: the code Codex wrote in prompts 1 to 8, plus the spec, the design direction and the verification notes. Each later prompt has its own commit; those marked "Written by OpenAI Codex" contain only Codex's code, and the others hold docs and recorded results. The prompt records above show how each block was asked for and what review found.
 
 ## Where Codex is visible in the product
 
