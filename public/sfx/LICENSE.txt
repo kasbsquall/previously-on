@@ -1,0 +1,4 @@
+Sound effects in this folder come from Kenney (www.kenney.nl) and are released under CC0 1.0 (public domain).
+
+sting.ogg  = Kenney Interface Sounds, confirmation_001.ogg
+stamp.ogg  = Kenney Impact Sounds, impactWood_medium_001.ogg

@@ -2,13 +2,19 @@ const ticket = document.querySelector('#ticket');
 const eventSource = new EventSource('/events');
 const $ = selector => document.querySelector(selector);
 let hideTimer;
+let coldTimer;
+let currentCard = null;
+let soundEffectsEnabled = true;
+const failedPlayback = new Set();
 
 $('#demo-tag').hidden = true;
 
 eventSource.addEventListener('state', event => {
   const state = JSON.parse(event.data);
   $('#demo-tag').hidden = !state.demo;
+  soundEffectsEnabled = state.soundEffectsEnabled !== false;
   if (state.onAir && state.onAir.until > Date.now()) {
+    if (currentCard?.id === state.onAir.id) return;
     if (ticket.hidden || ticket.dataset.cardId !== state.onAir.id) showCard(state.onAir, false);
   }
 });
@@ -19,14 +25,65 @@ eventSource.addEventListener('card:hide', event => {
 });
 
 function showCard(card, animate) {
+  currentCard = card;
   window.clearTimeout(hideTimer);
+  window.clearTimeout(coldTimer);
   if (!ticket.hidden && ticket.dataset.cardId !== card.id && animate) {
     ticket.classList.remove('play');
     ticket.classList.add('exit');
-    window.setTimeout(() => renderCard(card), 200);
+    window.setTimeout(() => {
+      ticket.hidden = true;
+      ticket.classList.remove('exit');
+      showCard(card, true);
+    }, 200);
     return;
   }
+  if (animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const coldOpen = $('#cold-open');
+    $('#cold-channel').textContent = card.channel ?? '';
+    coldOpen.hidden = false;
+    coldOpen.classList.remove('play');
+    void coldOpen.offsetWidth;
+    coldOpen.classList.add('play');
+    if (soundEffectsEnabled) playSound($('#sting-sound'), card.id);
+    coldTimer = window.setTimeout(() => {
+      coldOpen.hidden = true;
+      coldOpen.classList.remove('play');
+      enterTicket(card, true);
+    }, 1200);
+    return;
+  }
+  enterTicket(card, animate);
+}
+
+function enterTicket(card, animate) {
   renderCard(card, animate);
+  if (soundEffectsEnabled) window.setTimeout(() => playSound($('#stamp-sound'), card.id), animate ? 700 : 0);
+  if (card.audioUrl) {
+    const audio = $('#narrator-audio');
+    audio.src = card.audioUrl;
+    audio.volume = 0.55;
+    const play = () => {
+      try { Promise.resolve(audio.play()).catch(() => reportPlaybackFailure(card.id)); }
+      catch { reportPlaybackFailure(card.id); }
+    };
+    window.setTimeout(play, animate ? 760 : 0);
+  }
+}
+
+function playSound(audio, cardId) {
+  audio.currentTime = 0;
+  audio.volume = 0.22;
+  try { Promise.resolve(audio.play()).catch(() => reportPlaybackFailure(cardId)); }
+  catch { reportPlaybackFailure(cardId); }
+}
+
+function reportPlaybackFailure(cardId) {
+  if (failedPlayback.has(cardId)) return;
+  failedPlayback.add(cardId);
+  void fetch('/api/audio-failure', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cardId })
+  }).catch(() => {});
 }
 
 function renderCard(card, animate = true) {
@@ -118,7 +175,11 @@ function iconFor(kind) {
 
 function hideCard() {
   window.clearTimeout(hideTimer);
+  window.clearTimeout(coldTimer);
+  $('#cold-open').hidden = true;
+  $('#cold-open').classList.remove('play');
+  $('#narrator-audio').pause();
   ticket.classList.remove('play');
   ticket.classList.add('exit');
-  hideTimer = window.setTimeout(() => { ticket.hidden = true; ticket.classList.remove('exit'); }, 200);
+  hideTimer = window.setTimeout(() => { ticket.hidden = true; ticket.classList.remove('exit'); currentCard = null; }, 200);
 }

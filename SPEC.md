@@ -25,6 +25,8 @@ Hard rule from user research: the AI never talks in chat as if it were a viewer.
 
 Ad breaks only run on affiliate or partner channels. The control panel has a "Simulate ad break (60 s)" button that injects a payload with the exact shape of the documented `channel.ad_break.begin` event into the same handler. Anything simulated is labeled SIMULATED in the panel and in a small corner tag on the overlay. Never hide that a run is simulated.
 
+For real raid and ad-break triggers, request a Twitch clip and create a stream marker at trigger time. Poll Get Clips for up to 15 seconds; include the confirmed clip URL in the recap chat line and panel log when ready. Clip or marker failures are logged and never block a recap. Simulated triggers make no Twitch API calls.
+
 Cooldowns: `!catchup` 120 s per viewer and 30 s global; at most one card on air at a time; queued cards older than 60 s are dropped.
 
 ## Sources the recap can use
@@ -48,13 +50,13 @@ An in-memory ring buffer of source items `{ id, t, kind, text, user }`, also app
 
 ## Surfaces
 
-- **Overlay** `GET /overlay` (OBS Browser Source, 1920x1080, transparent background). Receives cards over Server-Sent Events from `GET /events`. Card on air for 15 s. No tokens or secrets in the URL. Visual design comes from `DESIGN.md` when it exists; until then a plain, readable placeholder.
-- **Control panel** `GET /control` (opened in Chrome on the streamer's machine): connection status, voice capture toggle and live transcript, note field, break buttons, simulate buttons, the pending card with a 5-second veto countdown (Approve now / Veto), and a log of the last 20 cards with their sources.
+- **Overlay** `GET /overlay` (OBS Browser Source, 1920x1080, transparent background). Receives cards over Server-Sent Events from `GET /events`. A roughly 1.2-second printed-ticket cold open precedes the ticket; reduced-motion mode skips the cold open. Sound effects and cached narrator audio are optional and fail soft. Keep each ticket on air for at least the narration length plus two seconds. No tokens or secrets in the URL. Visual design comes from `DESIGN.md`.
+- **Control panel** `GET /control` (opened in Chrome on the streamer's machine): connection status, voice capture toggle and live transcript, note field, break buttons, simulate buttons, the pending card with configurable approval, narrator voice and sound effects toggles, and a log of the last 20 cards with their sources and clip links. Card text is sent to OpenAI to make narrator audio.
 - **Chat line**: posted with `POST https://api.twitch.tv/helix/chat/messages` (scope `user:write:chat`), max 500 characters, prefixed `Previously on:`.
 
 ## Twitch connection
 
-- Auth: Device Code Grant Flow for a **public** client (`POST https://id.twitch.tv/oauth2/device`, then poll `POST https://id.twitch.tv/oauth2/token` with `grant_type=urn:ietf:params:oauth:grant-type:device_code`). Store tokens in `.data/tokens.json` (gitignored) and refresh them. Scopes: `user:read:chat user:write:chat user:bot channel:read:ads moderator:read:followers`.
+- Auth: Device Code Grant Flow for a **public** client (`POST https://id.twitch.tv/oauth2/device`, then poll `POST https://id.twitch.tv/oauth2/token` with `grant_type=urn:ietf:params:oauth:grant-type:device_code`). Store tokens in `.data/tokens.json` (gitignored) and refresh them. Scopes: `user:read:chat user:write:chat user:bot channel:read:ads moderator:read:followers clips:edit channel:manage:broadcast`.
 - The broadcaster account is also the bot account for this version.
 - EventSub over WebSocket (`wss://eventsub.wss.twitch.tv/ws`): create subscriptions with `POST https://api.twitch.tv/helix/eventsub/subscriptions` within 10 s of the welcome message; handle `session_keepalive`, `session_reconnect` and `revocation`; reconnect with backoff.
 - Read every endpoint, payload and scope from https://dev.twitch.tv/docs/ before using it. Do not invent fields.
@@ -68,6 +70,8 @@ An in-memory ring buffer of source items `{ id, t, kind, text, user }`, also app
 - `npm run eval`: runs the recap engine over the fixtures and writes `results/eval-<date>.json` with: cards produced, bullets kept vs dropped by the grounding check, fallback rate, and p50/p95 latency.
 - `npm start`: appends one privacy-filtered decision record per card to `results/live-cards.jsonl`; `npm run live-report` prints counts by trigger and status plus p50/p95 latency from that file. Demo and tests do not write live-card records.
 - The control panel can persist auto-approval after 5, 10 or 20 seconds, or hold a card until manual approval, in `.data/approval-settings.json`. Auto-approval shows the card and sends its chat line when the timer expires; hold mode does neither until approval.
+- Narrator voice and sound effects are on by default and persist in `.data/feature-settings.json`. Narration uses OpenAI Realtime audio with the `gpt-realtime-2.1-mini` model and `marin` voice; card text is sent to OpenAI. If unavailable, the card runs silently.
+- The browser speaks only cached server audio from a UUID-validated route. Do not include tokens or secrets in the route; cache WAV files in `.data/audio/`.
 
 ## Constraints
 

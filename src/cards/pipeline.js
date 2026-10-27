@@ -21,6 +21,9 @@ export function createCardPipeline({
   adBreakTimeScale = 1,
   onDecided,
   approvalSettings = createApprovalSettings(),
+  featureSettings = { get: () => ({ narratorVoice: true, soundEffects: true }), set: async value => value },
+  narrator,
+  clipReceipts,
   logChat = line => console.log(`Chat preview: ${line}`),
   log = line => console.log(line)
 }) {
@@ -56,7 +59,9 @@ export function createCardPipeline({
       voiceSegments: voiceSegments.slice(-3),
       modelEnabled: Boolean(process.env.OPENAI_API_KEY),
       approvalMode: approvalSettings.get().mode,
-      approvalSeconds: approvalSettings.get().seconds
+      approvalSeconds: approvalSettings.get().seconds,
+      narratorVoiceEnabled: featureSettings.get().narratorVoice,
+      soundEffectsEnabled: featureSettings.get().soundEffects
     };
   }
 
@@ -73,7 +78,7 @@ export function createCardPipeline({
     Promise.resolve(onDecided(card, mode)).catch(error => emitter.emit('log:error', error));
   }
 
-  async function buildCard({ trigger, event, simulated = false, from, fallbackFrom, to, overlayEligible = true, triggerInfo = {} }) {
+  async function buildCard({ trigger, event, simulated = false, from, fallbackFrom, to, overlayEligible = true, triggerInfo = {}, receiptPromise }) {
     const sequence = ++latestTriggerSequence;
     const end = to ?? now();
     const start = from ?? end - (trigger === 'raid' ? 10 : trigger === 'catchup' ? 5 : 10) * 60_000;
@@ -137,9 +142,27 @@ export function createCardPipeline({
       approvalMode: approvalSettings.get().mode,
       approvalSeconds: approvalSettings.get().seconds
     };
+    if (receiptPromise) card.receiptPromise = receiptPromise;
+    if (featureSettings.get().narratorVoice) {
+      try {
+        const audio = await narrator?.generate({ cardId: card.id, channel, headline, bullets });
+        if (audio) {
+          card.audioUrl = audio.audioUrl;
+          card.voiceDurationMs = audio.durationMs;
+        } else log(`Narrator voice unavailable for card ${card.id}.`);
+      } catch (error) {
+        log(`Narrator voice unavailable for card ${card.id}.`);
+      }
+    }
+    if (sequence !== latestTriggerSequence) return null;
     setPendingTimer(card);
     pending = card;
     addLog(card);
+    if (receiptPromise) Promise.resolve(receiptPromise).then(receipt => {
+      card.clipUrl = receipt?.clipUrl ?? null;
+      addLog(card);
+      publishState();
+    }).catch(() => {});
     emitter.emit('pending', publicCard(card));
     publishState();
     return publicCard(card);
@@ -169,7 +192,8 @@ export function createCardPipeline({
     if (card.overlayEligible) {
       if (onAirTimer) clearTimer(onAirTimer);
       lastOnAirAt = now();
-      card.onAirUntil = lastOnAirAt + ON_AIR_MS;
+      const airDuration = Math.max(ON_AIR_MS, 1200 + 760 + (card.voiceDurationMs ?? 0) + 2000);
+      card.onAirUntil = lastOnAirAt + airDuration;
       onAirCard = card;
       emitter.emit('card:show', publicCard(card));
       onAirTimer = setTimer(() => {
@@ -177,10 +201,18 @@ export function createCardPipeline({
         onAirCard = null;
         emitter.emit('card:hide', { id: card.id });
         publishState();
-      }, ON_AIR_MS);
+      }, airDuration);
     }
     publishState();
-    const line = chatLineFor(card);
+    let clipUrl = null;
+    if (card.receiptPromise) {
+      try { clipUrl = (await card.receiptPromise)?.clipUrl ?? null; }
+      catch { clipUrl = null; }
+      card.clipUrl = clipUrl;
+      addLog(card);
+      publishState();
+    }
+    const line = chatLineFor(card, clipUrl);
     try {
       if (mode === 'demo') logChat(line);
       else {
@@ -225,6 +257,12 @@ export function createCardPipeline({
     return settings;
   }
 
+  async function setFeatureSettings(value) {
+    const settings = await featureSettings.set(value);
+    publishState();
+    return settings;
+  }
+
   function setPendingTimer(card) {
     card.timer = card.approvalMode === 'timed'
       ? setTimer(() => { void approve(card.id, true); }, card.approvalSeconds * 1000)
@@ -237,9 +275,10 @@ export function createCardPipeline({
     const raidText = `raid from ${raider} with ${event.viewers} viewers`;
     const eventTime = new Date(now()).toISOString();
     await sourceBuffer.add({ t: eventTime, twitchTime: event.started_at, kind: 'event', text: raidText, user: raider });
+    const receiptPromise = captureReceipt('raid', simulated);
     return buildCard({
       trigger: 'raid', event, simulated,
-      triggerInfo: { name: raider, viewerCount: event.viewers }
+      triggerInfo: { name: raider, viewerCount: event.viewers }, receiptPromise
     });
   }
 
@@ -282,6 +321,7 @@ export function createCardPipeline({
       text: eventText,
       user: event.requester_user_name
     });
+    const receiptPromise = captureReceipt('ad-break', simulated);
     const start = receivedAt;
     const durationSeconds = Number(event.duration_seconds);
     const end = start + durationSeconds * 1000;
@@ -292,7 +332,7 @@ export function createCardPipeline({
         from: start - 180_000,
         fallbackFrom: start - 10 * 60_000,
         to: end,
-        triggerInfo: { seconds: durationSeconds, name: 'Ad break' }
+        triggerInfo: { seconds: durationSeconds, name: 'Ad break' }, receiptPromise
       });
     }, delay);
     const result = { payload: event, scheduledAt: end };
@@ -385,6 +425,12 @@ export function createCardPipeline({
     return segment;
   }
 
+  function captureReceipt(trigger, simulated) {
+    if (clipReceipts) return clipReceipts.capture({ trigger, simulated });
+    if (simulated) log('Twitch clip receipt skipped because the trigger was simulated.');
+    return undefined;
+  }
+
   async function addNote(text) {
     const note = await sourceBuffer.add({ t: new Date(now()).toISOString(), kind: 'note', text, user: channel });
     emitter.emit('note', note);
@@ -395,6 +441,12 @@ export function createCardPipeline({
     voiceEnabled = Boolean(enabled);
     emitter.emit('voice:enabled', voiceEnabled);
     publishState();
+  }
+
+  function logAudioFailure(cardId) {
+    if (!CARD_ID_RE.test(String(cardId)) || !cards.some(card => card.id === cardId)) return false;
+    log(`Narrator playback unavailable for card ${cardId}.`);
+    return true;
   }
 
   const api = {
@@ -415,12 +467,14 @@ export function createCardPipeline({
     notifyState: publishState,
     approve,
     veto,
-    setApprovalSettings
+    setApprovalSettings,
+    setFeatureSettings,
+    logAudioFailure
   };
   return api;
 
   function publicCard(card) {
-    const { timer, deadline, ...copy } = card;
+    const { timer, deadline, receiptPromise, ...copy } = card;
     return {
       ...copy,
       remainingMs: pending?.id === card.id
@@ -429,9 +483,9 @@ export function createCardPipeline({
     };
   }
 
-  function chatLineFor(card) {
+  function chatLineFor(card, clipUrl) {
     let prefix = 'Previously on: ';
-    if (card.welcomeOnly) return `${prefix}Welcome raiders from ${card.triggerInfo.name}. The stream just got started, nothing to catch up on yet.`;
+    if (card.welcomeOnly) return appendClip(`${prefix}Welcome raiders from ${card.triggerInfo.name}. The stream just got started, nothing to catch up on yet.`, clipUrl);
     if (card.trigger === 'raid') prefix += `Welcome raiders from ${card.triggerInfo.name}. `;
     const parts = [card.headline, ...card.bullets.map(bullet => bullet.text)].filter(Boolean)
       .map(text => text.replace(/[.!?]+$/u, ''));
@@ -442,10 +496,22 @@ export function createCardPipeline({
       line = next;
     }
     if (line && [...line].length < MAX_CHAT_CHARACTERS) line += '.';
+    line = appendClip(line, clipUrl);
     return [...line].length <= MAX_CHAT_CHARACTERS ? line : `${[...line].slice(0, MAX_CHAT_CHARACTERS - 3).join('')}...`;
   }
 
+  function appendClip(line, clipUrl) {
+    if (!clipUrl) return line;
+    const receipt = ` Watch the moment: ${clipUrl}`;
+    if ([...receipt].length >= MAX_CHAT_CHARACTERS) return line;
+    if ([...line + receipt].length <= MAX_CHAT_CHARACTERS) return line + receipt;
+    const prefix = [...line].slice(0, MAX_CHAT_CHARACTERS - [...receipt].length - 1).join('').replace(/[\s.!?]+$/u, '');
+    return `${prefix}…${receipt}`;
+  }
+
 }
+
+const CARD_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function isBotOutput(text) {
   return /^\s*(?:@\S+\s+)?Previously(?:\s+on| On check)?\s*:/i.test(String(text ?? ''));

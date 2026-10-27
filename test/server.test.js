@@ -47,6 +47,26 @@ test('/api/simulate ad-break returns serializable JSON with no timer handle', as
   assert.deepEqual(await invalid.json(), { error: 'Simulation type must be raid, catchup, or ad-break.' });
 });
 
+test('feature toggle endpoint persists the requested voice and sound state through the pipeline', async t => {
+  const pipeline = new EventEmitter();
+  pipeline.getState = () => ({ mode: 'demo', cards: [] });
+  pipeline.setFeatureSettings = async value => value;
+  const server = createServer({ pipeline, port: 0, mode: 'demo' });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const response = await fetch(`${origin}/api/feature-settings`, {
+    method: 'POST', headers: { origin, 'content-type': 'application/json' },
+    body: JSON.stringify({ narratorVoice: false, soundEffects: true })
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual((await response.json()).result, { narratorVoice: false, soundEffects: true });
+  const controls = await readFile(new URL('../public/control.html', import.meta.url), 'utf8');
+  assert.match(controls, /Narrator voice/);
+  assert.match(controls, /Sound effects/);
+  assert.match(controls, /Card text is sent to OpenAI/);
+});
+
 test('unexpected POST errors are logged and returned as a plain message', async t => {
   const pipeline = new EventEmitter();
   pipeline.getState = () => ({ mode: 'demo', cards: [] });

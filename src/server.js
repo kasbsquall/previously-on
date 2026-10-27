@@ -12,9 +12,11 @@ const MIME_TYPES = new Map([
   ['.css', 'text/css; charset=utf-8'],
   ['.js', 'text/javascript; charset=utf-8'],
   ['.json', 'application/json; charset=utf-8'],
+  ['.ogg', 'audio/ogg'],
   ['.woff2', 'font/woff2'],
   ['.woff', 'font/woff'],
-  ['.svg', 'image/svg+xml']
+  ['.svg', 'image/svg+xml'],
+  ['.wav', 'audio/wav']
 ]);
 
 export function formatSSE(event, data, id) {
@@ -30,7 +32,7 @@ export function isAllowedOrigin(origin, port) {
   return origin === `http://127.0.0.1:${port}`;
 }
 
-export function createServer({ pipeline, getConnection = () => 'offline', port = Number(process.env.PORT) || 4777, mode = 'real' } = {}) {
+export function createServer({ pipeline, getConnection = () => 'offline', port = Number(process.env.PORT) || 4777, mode = 'real', narrator } = {}) {
   if (!pipeline) throw new TypeError('A card pipeline is required.');
   const bus = new EventEmitter();
   let httpServer;
@@ -52,6 +54,13 @@ export function createServer({ pipeline, getConnection = () => 'offline', port =
     if (request.method === 'GET') {
       if (url.pathname === '/events') return handleSSE(request, response, bus, getPublicState);
       if (url.pathname === '/api/state') return sendJSON(response, 200, getPublicState());
+      const audioMatch = /^\/audio\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(url.pathname);
+      if (audioMatch) {
+        const audioPath = narrator?.audioPathFor(audioMatch[1]);
+        if (!audioPath) return sendJSON(response, 404, { error: 'Audio not found.' });
+        return serveFile(response, audioPath);
+      }
+      if (url.pathname.startsWith('/audio/')) return sendJSON(response, 400, { error: 'Invalid audio id.' });
       if (url.pathname === '/overlay') return serveFile(response, join(PUBLIC_DIR, 'overlay.html'));
       if (url.pathname === '/control') return serveFile(response, join(PUBLIC_DIR, 'control.html'));
       if (url.pathname.startsWith('/assets/')) return serveAsset(response, url.pathname.slice('/assets/'.length));
@@ -104,6 +113,8 @@ async function handlePost(request, response, pathname, pipeline) {
       case '/api/approve': result = await pipeline.approve(body.cardId); break;
       case '/api/veto': result = pipeline.veto(body.cardId); break;
       case '/api/approval-settings': result = await pipeline.setApprovalSettings(body); break;
+      case '/api/feature-settings': result = await pipeline.setFeatureSettings(body); break;
+      case '/api/audio-failure': result = pipeline.logAudioFailure(body.cardId); if (!result) throw requestError('Audio card id is invalid.'); break;
       case '/api/break': result = pipeline.goingOnBreak(); break;
       case '/api/back': result = await pipeline.backFromBreak(); break;
       case '/api/simulate': result = await simulate(body, pipeline); break;

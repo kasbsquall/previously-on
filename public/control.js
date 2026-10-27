@@ -23,6 +23,22 @@ $('#approval-setting').addEventListener('change', async event => {
     renderConnection();
   }
 });
+for (const [selector, key] of [['#narrator-setting', 'narratorVoice'], ['#sound-setting', 'soundEffects']]) {
+  $(selector).addEventListener('change', async event => {
+    const previous = currentState?.[key === 'narratorVoice' ? 'narratorVoiceEnabled' : 'soundEffectsEnabled'];
+    try {
+      const saved = await post('/api/feature-settings', {
+        narratorVoice: key === 'narratorVoice' ? event.target.checked : currentState.narratorVoiceEnabled,
+        soundEffects: key === 'soundEffects' ? event.target.checked : currentState.soundEffectsEnabled
+      });
+      currentState.narratorVoiceEnabled = saved.narratorVoice;
+      currentState.soundEffectsEnabled = saved.soundEffects;
+    } catch (error) {
+      event.target.checked = Boolean(previous);
+      showError(error.message);
+    }
+  });
+}
 window.addEventListener('keydown', event => {
   const target = event.target;
   if (event.key.toLocaleLowerCase() !== 'b' || event.altKey || event.ctrlKey || event.metaKey || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return;
@@ -140,6 +156,8 @@ function renderConnection() {
   $('#model-state').textContent = currentState.modelEnabled ? 'AI recap on' : 'No API key, quick recaps only';
   $('#model-state').className = `state ${currentState.modelEnabled ? 'connected' : ''}`;
   $('#approval-setting').value = currentState.approvalMode === 'hold' ? 'hold' : String(currentState.approvalSeconds ?? 5);
+  $('#narrator-setting').checked = currentState.narratorVoiceEnabled !== false;
+  $('#sound-setting').checked = currentState.soundEffectsEnabled !== false;
   $('#break-button').disabled = currentState.onBreak;
   $('#back-button').disabled = !currentState.onBreak;
   if (recognition) {
@@ -328,6 +346,14 @@ function renderLogRow(card) {
       row.append(sourceText);
     }
     detail.append(row);
+  }
+  if (card.clipUrl) {
+    const link = document.createElement('a');
+    link.href = card.clipUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = 'Watch the moment';
+    detail.prepend(link);
   }
   details.append(summary, detail);
   return details;

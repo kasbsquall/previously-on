@@ -35,6 +35,7 @@ function makeHarness(options = {}) {
     now: () => clock.now,
     setTimer: clock.setTimer.bind(clock),
     clearTimer: clock.clearTimer.bind(clock),
+    featureSettings: { get: () => ({ narratorVoice: false, soundEffects: true }), set: async value => value },
     ...options
   });
   return { pipeline, clock, stored, sent, sourceBuffer };
@@ -84,6 +85,27 @@ test('approval broadcasts a card and sends one recap chat line', async () => {
   assert.equal(await pipeline.approve(pending.id), true);
   assert.equal(shown.length, 1);
   assert.match(sent[0].line, /^Previously on: Welcome raiders from CozyCampfire\./);
+});
+
+test('clip receipt link is added to the approved chat line and card log', async () => {
+  const { pipeline, sent } = makeHarness({ clipReceipts: { capture: async () => ({ clipUrl: 'https://clips.twitch.tv/receipt', markerCreated: true }) } });
+  const card = await pipeline.handleRaid(raid());
+  await new Promise(resolve => setImmediate(resolve));
+  await pipeline.approve(card.id);
+  assert.match(sent[0].line, /Watch the moment: https:\/\/clips\.twitch\.tv\/receipt/);
+  assert.equal(pipeline.getState().cards[0].clipUrl, 'https://clips.twitch.tv/receipt');
+});
+
+test('dropped ad break cards do not request narrator audio', async () => {
+  let narratorCalls = 0;
+  const { pipeline, clock } = makeHarness({
+    featureSettings: { get: () => ({ narratorVoice: true, soundEffects: true }), set: async value => value },
+    narrator: { generate: async () => { narratorCalls++; return { audioUrl: '/audio/id', durationMs: 1000 }; } }
+  });
+  await pipeline.handleAdBreak({ duration_seconds: 0, started_at: new Date(start).toISOString() }, { simulated: true, timeScale: 0 });
+  await clock.advance(0);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(narratorCalls, 0);
 });
 
 test('raid trigger event remains available for provenance while its recap content is filtered', async () => {

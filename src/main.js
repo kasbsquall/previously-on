@@ -3,6 +3,7 @@ import { createEventSubClient } from './twitch/eventsub.js';
 import { sendChat, twitchRequest } from './twitch/api.js';
 import { startRuntime } from './runtime.js';
 import { createLiveCardLogger } from './cards/live-log.js';
+import { createClipReceipts } from './twitch/clip-receipts.js';
 
 const clientId = process.env.TWITCH_CLIENT_ID;
 const channel = process.env.TWITCH_CHANNEL;
@@ -22,6 +23,7 @@ const runtime = await startRuntime({
   channel: broadcaster.display_name,
   broadcasterId: broadcaster.id,
   onDecided: createLiveCardLogger(),
+  clipReceipts: createClipReceipts({ clientId, broadcasterId: broadcaster.id, scopes: identity.scopes ?? [], getAccessToken: auth.getAccessToken.bind(auth) }),
   getConnection: () => connection,
   sendChat: async (text, card) => sendChat(text, {
     clientId,

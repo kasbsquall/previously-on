@@ -15,6 +15,7 @@ if (!broadcaster) throw new Error(`Twitch channel not found: ${channel}`);
 if (identity.user_id !== broadcaster.id) throw new Error('The authorized Twitch account must be the broadcaster account.');
 console.log(`Twitch login: ${identity.login}`);
 console.log(`Broadcaster type: ${broadcaster.broadcaster_type || '(none)'}`);
+for (const scope of ['clips:edit', 'channel:manage:broadcast']) console.log(`${scope}: ${(identity.scopes ?? []).includes(scope) ? 'granted' : 'missing'}`);
 
 const eventSub = createEventSubClient({ clientId, getAccessToken: auth.getAccessToken.bind(auth), broadcasterId: broadcaster.id, userId: identity.user_id });
 await new Promise((resolve, reject) => {

@@ -33,27 +33,31 @@ Open the overlay at [http://127.0.0.1:4777/overlay](http://127.0.0.1:4777/overla
 
 | Trigger | Twitch event or API | Result |
 |---|---|---|
-| Ad break | EventSub `channel.ad_break.begin`; Helix `POST /helix/chat/messages` for the recap line | Recap after the break ends; ad events require an affiliate or partner channel |
+| Ad break | EventSub `channel.ad_break.begin`; real triggers also use Helix Create Clip, Get Clips and Create Stream Marker | Recap after the break ends; ad events require an affiliate or partner channel |
 | `!catchup` | EventSub `channel.chat.message`; Helix `POST /helix/chat/messages` | Reply to the requester; show a ticket when cooldown rules allow |
 | Back from break | Control panel action; Helix `POST /helix/chat/messages` for the recap line | Recap ticket and chat line |
-| Raid | EventSub `channel.raid`; Helix `POST /helix/chat/messages` for the welcome line | Welcome ticket and chat line for the raiding channel |
+| Raid | EventSub `channel.raid`; real triggers also use Helix Create Clip, Get Clips and Create Stream Marker | Welcome ticket and chat line for the raiding channel |
 
 The recap selects recent chat, voice transcripts and streamer notes as content; EventSub events remain in the buffer for provenance counts only. The OpenAI Responses API returns structured output. A grounding check drops bullets that cite unknown sources or contain blocked terms. Refused, incomplete, timed-out or ungrounded model output uses the deterministic fallback.
 
-The control panel offers auto-approval after 5, 10 or 20 seconds, or **Hold until I approve**. When an auto-approval timer runs out, the card is approved, shown on stream and sent to chat. Hold mode never approves or posts automatically; the streamer must approve the card.
+The control panel offers auto-approval after 5, 10 or 20 seconds, or **Hold until I approve**. When an auto-approval timer runs out, the card is approved, shown on stream and sent to chat. Hold mode never approves or posts automatically; the streamer must approve the card. Narrator voice and sound effects are toggled separately and on by default.
 
-The server binds to `127.0.0.1`; secrets belong in `.env`. Chrome's Web Speech API sends voice audio to Google's speech service. Chat, transcript text and notes go to OpenAI only for a recap call. The app sends approved recap lines to Twitch.
+The server binds to `127.0.0.1`; secrets belong in `.env`. Chrome's Web Speech API sends voice audio to Google's speech service. Chat, transcript text and notes go to OpenAI for recap; card text also goes to OpenAI to make narrator voice audio. OBS Browser Source audio must be enabled to hear narration and sound effects. The app sends approved recap lines to Twitch.
+
+For real raid and ad-break triggers, the app requests a Twitch clip and a stream marker. A clip link is added to chat and the panel log only after Get Clips confirms it is ready. Missing scopes, offline streams, disabled clips and API errors do not block the recap. Simulated triggers skip Twitch clip and marker calls.
+
+The narrator uses OpenAI Realtime audio with the `gpt-realtime-2.1-mini` model and `marin` voice. If voice generation or browser playback fails, the card still appears without narration.
 
 ## Run it on your channel
 
-Register a Twitch application as a **public client** in the Twitch developer console. Use Device Code Grant Flow; this app does not use a client secret. Copy `.env.example` to `.env` and set `TWITCH_CLIENT_ID` and `TWITCH_CHANNEL`. Device authorization requests `user:read:chat`, `user:write:chat`, `user:bot`, `channel:read:ads` and `moderator:read:followers`. Set `OPENAI_API_KEY` to enable model recaps; it is optional. `OPENAI_MODEL` defaults to `gpt-5.4-mini`.
+Register a Twitch application as a **public client** in the Twitch developer console. Use Device Code Grant Flow; this app does not use a client secret. Copy `.env.example` to `.env` and set `TWITCH_CLIENT_ID` and `TWITCH_CHANNEL`. Device authorization requests chat, ad, follower, clip-edit and broadcast-marker scopes. `npm run check-twitch` reports whether clip and marker scopes were granted. Set `OPENAI_API_KEY` to enable model recaps and narrator audio; it is optional. `OPENAI_MODEL` defaults to `gpt-5.4-mini`.
 
 ```sh
 npm install
 npm start
 ```
 
-Follow the device authorization prompt in the terminal. Add an OBS Browser Source using `http://127.0.0.1:4777/overlay`, set its width to 1920 and height to 1080, and keep the browser source background transparent. Open `http://127.0.0.1:4777/control` in Chrome for moderation, approval timing, voice capture and notes.
+Follow the device authorization prompt in the terminal. Add an OBS Browser Source using `http://127.0.0.1:4777/overlay`, set its width to 1920 and height to 1080, keep the browser source background transparent, and enable browser-source audio. Open `http://127.0.0.1:4777/control` in Chrome for moderation, approval timing, narrator and sound settings, voice capture and notes.
 
 ## What was tested on real Twitch
 

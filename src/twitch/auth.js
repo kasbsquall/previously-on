@@ -9,7 +9,9 @@ export const TWITCH_SCOPES = [
   'user:write:chat',
   'user:bot',
   'channel:read:ads',
-  'moderator:read:followers'
+  'moderator:read:followers',
+  'clips:edit',
+  'channel:manage:broadcast'
 ];
 
 export class TwitchAuthError extends Error {
@@ -94,7 +96,9 @@ export function createTwitchAuth({ clientId = process.env.TWITCH_CLIENT_ID, toke
 
   async function acquire() {
     let tokens = await loadTokens();
-    if (!tokens) {
+    const requestedScopes = tokens?.requested_scopes;
+    const hasRequestedCurrentScopes = Array.isArray(requestedScopes) && TWITCH_SCOPES.every(scope => requestedScopes.includes(scope));
+    if (!tokens || !hasRequestedCurrentScopes) {
       const device = await requestDeviceAuthorization();
       tokens = await pollDeviceCode({
         deviceCode: device.device_code,
@@ -105,6 +109,7 @@ export function createTwitchAuth({ clientId = process.env.TWITCH_CLIENT_ID, toke
         now
       });
       tokens.expires_at = now() + tokens.expires_in * 1000;
+      tokens.requested_scopes = [...TWITCH_SCOPES];
       await saveTokens(tokens);
     }
     if (!tokens.expires_at || tokens.expires_at <= now() + 60_000) tokens = await refresh(tokens);

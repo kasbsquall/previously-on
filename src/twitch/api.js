@@ -7,7 +7,7 @@ export class TwitchApiError extends Error {
   }
 }
 
-export async function twitchRequest(path, { clientId, accessToken, method = 'GET', body, fetchImpl = fetch } = {}) {
+export async function twitchRequest(path, { clientId, accessToken, method = 'GET', body, fetchImpl = fetch, signal } = {}) {
   const response = await fetchImpl(`https://api.twitch.tv/helix/${path}`, {
     method,
     headers: {
@@ -15,6 +15,7 @@ export async function twitchRequest(path, { clientId, accessToken, method = 'GET
       Authorization: `Bearer ${accessToken}`,
       ...(body ? { 'content-type': 'application/json' } : {})
     },
+    ...(signal ? { signal } : {}),
     ...(body ? { body: JSON.stringify(body) } : {})
   });
   const result = response.status === 204 ? null : await response.json();
