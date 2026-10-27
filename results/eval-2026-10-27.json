@@ -1,0 +1,116 @@
+{
+  "generatedAt": "2026-10-27T03:45:38.516Z",
+  "modelApiKeyConfigured": true,
+  "cards": [
+    {
+      "trigger": "raid",
+      "headline": "MeadowMoth repaired the greenhouse and opened the forest",
+      "bullets": [
+        {
+          "text": "The greenhouse was repaired after a morning of work.",
+          "sources": [
+            "S55"
+          ]
+        },
+        {
+          "text": "The bridge still needed two boards while the north path was nearing open.",
+          "sources": [
+            "S9"
+          ]
+        },
+        {
+          "text": "The forest trail opened, and a waterfall campsite was marked on the map.",
+          "sources": [
+            "S61",
+            "S67",
+            "S72"
+          ]
+        }
+      ],
+      "provenance": {
+        "voiceSeconds": 562,
+        "chatCount": 64,
+        "eventCount": 3,
+        "noteCount": 1
+      },
+      "engine": "model",
+      "latencyMs": 2820,
+      "droppedBullets": []
+    },
+    {
+      "trigger": "catch-up",
+      "headline": "The greenhouse got repaired and fishing started in the rain",
+      "bullets": [
+        {
+          "text": "The greenhouse was repaired after a morning of work.",
+          "sources": [
+            "S39"
+          ]
+        },
+        {
+          "text": "A rare seed was set aside for the greenhouse.",
+          "sources": [
+            "S5"
+          ]
+        },
+        {
+          "text": "Rain moved in, so fishing started by the pond.",
+          "sources": [
+            "S16",
+            "S10"
+          ]
+        }
+      ],
+      "provenance": {
+        "voiceSeconds": 259,
+        "chatCount": 32,
+        "eventCount": 1,
+        "noteCount": 1
+      },
+      "engine": "model",
+      "latencyMs": 2035,
+      "droppedBullets": []
+    },
+    {
+      "trigger": "back-from-break",
+      "headline": "MeadowMoth reopened the forest trail and kept exploring",
+      "bullets": [
+        {
+          "text": "A CozyCampfire raid brought 14 viewers.",
+          "sources": [
+            "S8"
+          ]
+        },
+        {
+          "text": "The forest trail and waterfall campsite were opened after break.",
+          "sources": [
+            "S25"
+          ]
+        },
+        {
+          "text": "The village square got new flower beds.",
+          "sources": [
+            "S17"
+          ]
+        }
+      ],
+      "provenance": {
+        "voiceSeconds": 130,
+        "chatCount": 19,
+        "eventCount": 1,
+        "noteCount": 1
+      },
+      "engine": "model",
+      "latencyMs": 2828,
+      "droppedBullets": []
+    }
+  ],
+  "bulletsKept": 9,
+  "bulletsDropped": 0,
+  "fallbackRate": 0,
+  "latencyMs": {
+    "p50": 2820,
+    "p95": 2828
+  },
+  "injectedTextRepeatedInOutput": false
+}
