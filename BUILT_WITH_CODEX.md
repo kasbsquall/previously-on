@@ -14,7 +14,7 @@ Every line of product code in this repository was written by OpenAI Codex in tha
 
 At runtime, the recaps come from the OpenAI Responses API. The hackathon rules ask for Codex to build the project. They do not restrict which model the product calls.
 
-## The twelve prompts
+## The thirteen prompts
 
 The prompt records are in [`docs/codex-prompts/`](docs/codex-prompts/). Each one started with what the review of the previous block found.
 
@@ -31,7 +31,8 @@ The prompt records are in [`docs/codex-prompts/`](docs/codex-prompts/). Each one
 | 9 | [Recap focus](docs/codex-prompts/09-recap-focus.md) | Twitch events kept out of recap content, headlines without a period, hold-mode stub | Simulate ad break showed a raw Node error, and the demo no longer produced ad-break cards |
 | 10 | [Ad break fixes](docs/codex-prompts/10-ad-break-fixes.md) | Serializable ad-break result, plain panel errors, demo replay on the live clock, ad-break window that widens to 10 minutes, a log line when a card is dropped | Checked in the browser: all four triggers produce a card in the demo |
 | 11 | [Show and clips](docs/codex-prompts/11-show-and-clips.md) | TV-style cold open, CC0 sound effects, OpenAI narrator voice with cache, voice and sound settings, Twitch clip and stream marker receipts for real raids and ad breaks | In the browser the cold open looked like a small toast and used a colored left border; the first demo raid card fell back to the generic headline |
-| 12 | [Judge demo and README](docs/codex-prompts/12-judge-demo-and-readme.md), then [12b](docs/codex-prompts/12b-record-demo-fix.md) and [12c](docs/codex-prompts/12c-judge-page-polish.md) | Lower-third cold open, voice generated in the background, demo preload, recorded browser demo for GitHub Pages with visible sources, Pages workflow, README rewritten for judges. 12b fixed the recording script after a real run failed; 12c made the judge page start with a card and say what the product is | |
+| 12 | [Judge demo and README](docs/codex-prompts/12-judge-demo-and-readme.md), then [12b](docs/codex-prompts/12b-record-demo-fix.md) and [12c](docs/codex-prompts/12c-judge-page-polish.md) | Lower-third cold open, voice generated in the background, demo preload, recorded browser demo for GitHub Pages with visible sources, Pages workflow, README rewritten for judges. 12b fixed the recording script after a real run failed; 12c made the judge page start with a card and say what the product is || A second blind review asked that nothing airs unread, and that the ad break be shown in action |
+| 13 | [Review during ads](docs/codex-prompts/13-review-during-ads.md) | Ad-break card built when the break starts and reviewed while the ads run, airs when the break ends; judge page sources hidden until asked; README "Why" line | |
 
 ## Commits
 
