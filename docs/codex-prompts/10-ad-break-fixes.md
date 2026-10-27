@@ -1,0 +1,10 @@
+# Prompt 10
+
+Sent verbatim to Codex in session `01a174cd-3a2a-7f21-a9bf-1289a1e0b57a`.
+
+
+Browser review of `npm run demo` after prompt 9 found two problems with the ad break, which is now the lead trigger in the README.
+
+1. **Simulate ad break shows a raw Node error.** Clicking "Simulate ad break (60 s)" in the panel shows "Converting circular structure to JSON --> starting at object with constructor 'Timeout' ...". `handleAdBreak` returns and emits `{ payload, scheduledAt, timer }`, and the timer cannot be serialized (the SSE broadcast and the HTTP response both fail; the demo log prints "Demo trigger error" for the scheduled ad break too). Keep the timer internal; return and emit only serializable data. Separately, the server's catch block sends `error.message` to the panel as is. For unexpected errors, send a plain message ("Something went wrong. Check the terminal for details.") and log the detail in the terminal; keep the specific messages for validation errors you raise on purpose.
+2. **No ad-break card appears in the demo.** Three simulated ad breaks (the demo's own at 63 s and two from the panel) produced no card in more than 90 s; raid, !catchup and break cards worked. Before prompt 9 the ad-break card existed but talked about the raid. Find the root cause and report it. My guess, to verify: `replayFixture` timestamps items about a quarter of the fixture span in the past, so the ad-break window (3 minutes before the ad to its end) holds only events, and since prompt 9 events are not recap content, the card is dropped silently. Fix the demo so the ad-break window has voice, notes or chat. For real streams: if the 3-minute window has no voice, notes or chat, widen it to the last 10 minutes before dropping the card. When a card is dropped for lack of content, log one line in the terminal and show a short line in the panel log ("Ad break: nothing new to recap"), so the streamer knows the trigger fired.
+3. Tests: `/api/simulate` with `ad-break` returns 200 with JSON; the demo's simulated ad break produces a card; the widened window; the dropped-card log line. Run `npm test` and report. Do not commit.

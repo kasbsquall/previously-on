@@ -14,7 +14,7 @@ Every line of product code in this repository was written by OpenAI Codex in tha
 
 At runtime, the recaps come from the OpenAI Responses API. The hackathon rules ask for Codex to build the project. They do not restrict which model the product calls.
 
-## The eight prompts
+## The ten prompts
 
 The prompt records are in [`docs/codex-prompts/`](docs/codex-prompts/). Each one started with what the review of the previous block found.
 
@@ -26,8 +26,10 @@ The prompt records are in [`docs/codex-prompts/`](docs/codex-prompts/). Each one
 | 4 | [Review fixes](docs/codex-prompts/04-review-fixes.md) | Fixes for the browser review, model in demo mode, log layout | First live test on Twitch |
 | 5 | [Live test fixes](docs/codex-prompts/05-live-test-fixes.md) | One clock for all sources, the bot ignores its own replies, cleaner chat line and headlines | Live raid test |
 | 6 | [Keepalive and commands](docs/codex-prompts/06-keepalive-and-commands.md) | Keepalive grace period, `!` commands kept out of recaps, welcome ticket when a raid has nothing to recap | The recap repeated the raid that the stub already shows |
-| 7 | [Docs and live log](docs/codex-prompts/07-docs-and-live-log.md) | Trigger excluded from the model's sources, `results/live-cards.jsonl`, README, JUDGE.md, license | |
-| 8 | [OpenAI recap and approval settings](docs/codex-prompts/08-openai-and-approval.md) | Responses API, configurable approval hold and timer, judge-facing README updates | |
+| 7 | [Docs and live log](docs/codex-prompts/07-docs-and-live-log.md) | Trigger excluded from the model's sources, `results/live-cards.jsonl`, README, JUDGE.md, license | A blind review of the README asked for the late viewer first and visible proof, and a simulated raid in the demo still repeated the raid |
+| 8 | [OpenAI recap and approval settings](docs/codex-prompts/08-openai-and-approval.md) | Responses API, configurable approval hold and timer, judge-facing README updates | With the real model, ad-break cards recapped the raid and follows instead of the stream |
+| 9 | [Recap focus](docs/codex-prompts/09-recap-focus.md) | Twitch events kept out of recap content, headlines without a period, hold-mode stub | Simulate ad break showed a raw Node error, and the demo no longer produced ad-break cards |
+| 10 | [Ad break fixes](docs/codex-prompts/10-ad-break-fixes.md) | Serializable ad-break result, plain panel errors, demo replay on the live clock, ad-break window that widens to 10 minutes, a log line when a card is dropped | Checked in the browser: all four triggers produce a card in the demo |
 
 ## Commits
 

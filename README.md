@@ -70,7 +70,7 @@ Live tests are documented in [docs/VERIFICATION.md](docs/VERIFICATION.md). When 
 
 Codex session ID: `01a174cd-3a2a-7f21-a9bf-1289a1e0b57a`.
 
-The build ran in one Codex thread across eight prompts. Each prompt was written from the review of the previous block, and the resulting fixes were tested before the next prompt.
+The build ran in one Codex thread across ten prompts. Each prompt was written from the review of the previous block, and the resulting fixes were tested before the next prompt.
 
 More build details are in [BUILT_WITH_CODEX.md](BUILT_WITH_CODEX.md).
 

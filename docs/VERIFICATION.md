@@ -21,4 +21,8 @@ Twitch's own raid settings blocked the first attempts: the receiving channel req
 - The welcome ticket for a raid with nothing to recap, and the recap wording after prompts 6 and 7, on a live channel.
 - Voice capture with the Web Speech API during a real stream.
 
+## Recap quality with the OpenAI model
+
+`npm run eval` on the synthetic fixture with `gpt-5.4-mini` (run on 2026-10-27 UTC, after prompt 10): 3 of 3 cards from the model (raid, `!catchup`, back from break), 9 of 9 bullets kept, 0 dropped by the source check, fallback rate 0, latency p50 2,738 ms and p95 3,429 ms, and the injected chat text was not repeated in any output. Three cards is a small sample: it shows the path works, not a quality benchmark. Results: [`results/eval-2026-10-27.json`](../results/eval-2026-10-27.json). The ad-break card is not in the eval; it was checked in the browser with `npm run demo`.
+
 Measured latencies from live runs go to `results/live-cards.jsonl`, and `npm run live-report` summarizes them. This file will be updated after the final recorded raid.

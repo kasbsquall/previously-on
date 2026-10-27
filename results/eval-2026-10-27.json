@@ -1,29 +1,28 @@
 {
-  "generatedAt": "2026-10-27T03:45:38.516Z",
+  "generatedAt": "2026-10-27T04:10:07.272Z",
   "modelApiKeyConfigured": true,
   "cards": [
     {
       "trigger": "raid",
-      "headline": "MeadowMoth repaired the greenhouse and opened the forest",
+      "headline": "MeadowMoth repaired the greenhouse and opened new paths",
       "bullets": [
         {
-          "text": "The greenhouse was repaired after a morning of work.",
+          "text": "The greenhouse was repaired after taking the whole morning.",
           "sources": [
             "S55"
           ]
         },
         {
-          "text": "The bridge still needed two boards while the north path was nearing open.",
+          "text": "They finished the cottage garden and planned lanterns by the path.",
           "sources": [
-            "S9"
+            "S3",
+            "S44"
           ]
         },
         {
-          "text": "The forest trail opened, and a waterfall campsite was marked on the map.",
+          "text": "The bridge needed two more boards before the north path opened.",
           "sources": [
-            "S61",
-            "S67",
-            "S72"
+            "S9"
           ]
         }
       ],
@@ -34,30 +33,30 @@
         "noteCount": 1
       },
       "engine": "model",
-      "latencyMs": 2820,
+      "latencyMs": 2738,
       "droppedBullets": []
     },
     {
       "trigger": "catch-up",
-      "headline": "The greenhouse got repaired and fishing started in the rain",
+      "headline": "Greenhouse repairs and fishing filled the stream",
       "bullets": [
         {
-          "text": "The greenhouse was repaired after a morning of work.",
+          "text": "The greenhouse was repaired after taking the whole morning",
           "sources": [
             "S39"
           ]
         },
         {
-          "text": "A rare seed was set aside for the greenhouse.",
+          "text": "Rain started, so the stream shifted to fishing for a bit",
           "sources": [
-            "S5"
+            "S16"
           ]
         },
         {
-          "text": "Rain moved in, so fishing started by the pond.",
+          "text": "Lanterns were planned for the path, and bridge work was queued",
           "sources": [
-            "S16",
-            "S10"
+            "S28",
+            "S18"
           ]
         }
       ],
@@ -68,29 +67,30 @@
         "noteCount": 1
       },
       "engine": "model",
-      "latencyMs": 2035,
+      "latencyMs": 3429,
       "droppedBullets": []
     },
     {
       "trigger": "back-from-break",
-      "headline": "MeadowMoth reopened the forest trail and kept exploring",
+      "headline": "The stream returned to the forest trail and campsite plans",
       "bullets": [
         {
-          "text": "A CozyCampfire raid brought 14 viewers.",
-          "sources": [
-            "S8"
-          ]
-        },
-        {
-          "text": "The forest trail and waterfall campsite were opened after break.",
+          "text": "The forest trail was opened and the waterfall campsite marked.",
           "sources": [
             "S25"
           ]
         },
         {
-          "text": "The village square got new flower beds.",
+          "text": "Seed restocking was planned before the next season.",
           "sources": [
-            "S17"
+            "S11"
+          ]
+        },
+        {
+          "text": "The village square and flower beds were updated, with one last beach trip.",
+          "sources": [
+            "S17",
+            "S23"
           ]
         }
       ],
@@ -101,7 +101,7 @@
         "noteCount": 1
       },
       "engine": "model",
-      "latencyMs": 2828,
+      "latencyMs": 2094,
       "droppedBullets": []
     }
   ],
@@ -109,8 +109,8 @@
   "bulletsDropped": 0,
   "fallbackRate": 0,
   "latencyMs": {
-    "p50": 2820,
-    "p95": 2828
+    "p50": 2738,
+    "p95": 3429
   },
   "injectedTextRepeatedInOutput": false
 }
