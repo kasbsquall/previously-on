@@ -21,8 +21,9 @@ Video: coming soon.
 | Live Twitch `!catchup` | A recap used the viewer's three chat messages, written in Spanish, and returned in English. |
 | Live Twitch raid | EventSub delivered the raid and a card reached the overlay; that first test had no other recap sources in its window. |
 | OBS | Ticket displayed in OBS 32.1.2 at 1920x1080. |
+| Live OBS BRB break | Switching OBS to the BRB scene built a model card at once (1,819 ms) for review; switching back aired it with the narrator voice. |
 | Model evaluation | 3 cards; 9 bullets kept, 0 dropped; fallback rate 0; p50 2,738 ms, p95 3,429 ms. This is a synthetic fixture evaluation, not live latency. |
-| Tests | 81 passed with `npm test`; the suite covers OBS authentication and reconnect, scene changes, grounding, fallback, veto, cooldowns, keepalive and clock skew. |
+| Tests | 83 passed with `npm test`; the suite covers OBS authentication and reconnect, scene changes, grounding, fallback, veto, cooldowns, keepalive and clock skew. |
 
 Details and limits are in [docs/VERIFICATION.md](docs/VERIFICATION.md). Evaluation data: [results/eval-2026-10-27.json](results/eval-2026-10-27.json).
 
@@ -58,7 +59,7 @@ The demo needs no Twitch account or API key. Add `OPENAI_API_KEY` to `.env` to u
 | Ad break | EventSub `channel.ad_break.begin`; real triggers request a clip and stream marker | Review during the ad; airs and posts at its end if approved, or if timed auto-approval is selected |
 | `!catchup` | EventSub `channel.chat.message` | Chat reply; overlay card when cooldown rules allow |
 | Back from break | Panel buttons | Card and chat line for the time before the break |
-| Back from BRB | OBS `CurrentProgramSceneChanged` for the selected break scene | Review while away; airs and posts when the streamer leaves that scene |
+| Back from BRB | OBS scene changes (transition events plus a 2-second program scene check) for the selected break scene | Review while away; airs and posts when the streamer leaves that scene |
 | Raid | EventSub `channel.raid`; real triggers request a clip and stream marker | Welcome card and chat line |
 
 Ad breaks need an affiliate or partner channel. The streamer can approve or veto the ad-break card while ads run; approval does not make it air early. At ad end, an approved card airs, or a timed mode auto-approves it; **Hold until I approve** requires explicit approval. If the recap is still generating at ad end, it has up to 10 seconds to finish before it is dropped. For other triggers, the panel can auto-approve after 5, 10 or 20 seconds; when that timer runs out, the card is shown and posted to chat. Narrator voice and sound effects are on by default and can be toggled independently. Missing clip scopes or Twitch API errors do not block a card; simulated triggers skip clip and marker calls.
