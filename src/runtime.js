@@ -4,8 +4,9 @@ import { createApprovalSettings } from './cards/approval-settings.js';
 import { createFeatureSettings } from './cards/feature-settings.js';
 import { createServer } from './server.js';
 import { createNarrator } from './audio/narrator.js';
+import { createBreakSceneSettings } from './obs/break-scene-settings.js';
 
-export async function startRuntime({ mode = 'real', channel, broadcasterId, sendChat, recap, getConnection, adBreakTimeScale = 1, sessionPath = '.data/session.jsonl', port = Number(process.env.PORT) || 4777, logChat, onDecided, clipReceipts, narrator = createNarrator() } = {}) {
+export async function startRuntime({ mode = 'real', channel, broadcasterId, sendChat, recap, getConnection, getObsState = () => ({ status: 'not configured', scenes: [] }), setObsBreakScene = async () => '', getObsBreakScene = () => '', adBreakTimeScale = 1, sessionPath = '.data/session.jsonl', port = Number(process.env.PORT) || 4777, logChat, onDecided, clipReceipts, narrator = createNarrator() } = {}) {
   if (!channel) throw new Error('TWITCH_CHANNEL is required.');
   const sourceBuffer = createSourceBuffer({ filePath: sessionPath });
   await sourceBuffer.ready;
@@ -28,7 +29,7 @@ export async function startRuntime({ mode = 'real', channel, broadcasterId, send
     narrator,
     clipReceipts
   });
-  const server = createServer({ pipeline, getConnection, port, mode, narrator });
+  const server = createServer({ pipeline, getConnection, getObsState, setObsBreakScene, getObsBreakScene, port, mode, narrator });
   await new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(port, '127.0.0.1', resolve);

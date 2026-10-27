@@ -32,7 +32,7 @@ export function isAllowedOrigin(origin, port) {
   return origin === `http://127.0.0.1:${port}`;
 }
 
-export function createServer({ pipeline, getConnection = () => 'offline', port = Number(process.env.PORT) || 4777, mode = 'real', narrator } = {}) {
+export function createServer({ pipeline, getConnection = () => 'offline', getObsState = () => ({ status: 'not configured', scenes: [] }), setObsBreakScene = async () => '', getObsBreakScene = () => '', port = Number(process.env.PORT) || 4777, mode = 'real', narrator } = {}) {
   if (!pipeline) throw new TypeError('A card pipeline is required.');
   const bus = new EventEmitter();
   let httpServer;
@@ -42,7 +42,8 @@ export function createServer({ pipeline, getConnection = () => 'offline', port =
     connection: mode === 'demo' ? 'demo' : getConnection(),
     mode,
     demo: mode === 'demo',
-    voiceApiAvailable: true
+    voiceApiAvailable: true,
+    obs: { ...getObsState(), breakScene: getObsBreakScene() }
   });
 
   for (const eventName of ['state', 'pending', 'approved', 'vetoed', 'log', 'break', 'voice:segment', 'voice:enabled', 'note', 'card:show', 'card:hide', 'chat:error', 'ad-break:scheduled']) {
@@ -113,6 +114,7 @@ async function handlePost(request, response, pathname, pipeline) {
       case '/api/approve': result = await pipeline.approve(body.cardId); break;
       case '/api/veto': result = pipeline.veto(body.cardId); break;
       case '/api/approval-settings': result = await pipeline.setApprovalSettings(body); break;
+      case '/api/obs-break-scene': result = await setObsBreakScene(body.scene); break;
       case '/api/feature-settings': result = await pipeline.setFeatureSettings(body); break;
       case '/api/audio-failure': result = pipeline.logAudioFailure(body.cardId); if (!result) throw requestError('Audio card id is invalid.'); break;
       case '/api/break': result = pipeline.goingOnBreak(); break;

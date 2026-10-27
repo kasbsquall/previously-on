@@ -24,11 +24,11 @@ function sampleRecording() {
     recordedAt: '2026-10-27T18:00:00.000Z',
     model: 'gpt-5.4-mini',
     source: 'Recorded demo pipeline.',
-    cards: [makeCard('ad-break'), makeCard('raid', 2), makeCard('catchup')]
+    cards: [makeCard('ad-break'), makeCard('brb'), makeCard('raid', 2), makeCard('catchup')]
   };
 }
 
-test('recording format validates three grounded cards and rejects unsafe audio paths', () => {
+test('recording format validates four grounded cards and rejects unsafe audio paths', () => {
   const recording = sampleRecording();
   assert.equal(validateRecording(recording), recording);
   recording.cards[0].narrator.file = 'audio/../../secret.wav';
@@ -36,7 +36,7 @@ test('recording format validates three grounded cards and rejects unsafe audio p
 });
 
 test('replay adapter feeds the shared overlay with cached audio and exposes cited source lines', () => {
-  const card = sampleRecording().cards[1];
+  const card = sampleRecording().cards[2];
   const overlayCard = overlayCardForReplay(card);
   assert.equal(overlayCard.audioUrl, 'recording/audio/raid.wav');
   assert.equal(overlayCard.bullets, card.bullets);

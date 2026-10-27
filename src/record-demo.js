@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createCardPipeline } from './cards/pipeline.js';
 import { createNarrator } from './audio/narrator.js';
@@ -45,9 +45,14 @@ const pipeline = createCardPipeline({
 const cards = [];
 cards.push(await captureRecordedCard(pipeline, { trigger: 'ad-break', action: () => pipeline.simulateAdBreak() }));
 streamClock += 61_000;
+cards.push(await captureRecordedCard(pipeline, { trigger: 'brb', action: () => pipeline.startBrbBreak({ simulated: true }) }));
+streamClock += 61_000;
 cards.push(await captureRecordedCard(pipeline, { trigger: 'raid', action: () => pipeline.simulateRaid() }));
 streamClock += 61_000;
 cards.push(await captureRecordedCard(pipeline, { trigger: 'catchup', action: () => pipeline.simulateCatchup() }));
+
+const retainedAudio = new Set(cards.map(card => card.narrator.file.split('/').at(-1)));
+for (const file of await readdir(audioDirectory)) if (!retainedAudio.has(file)) await rm(join(audioDirectory, file), { force: true });
 
 const recording = validateRecording({
   version: 1,
@@ -57,7 +62,7 @@ const recording = validateRecording({
   cards
 });
 await writeFile(join(recordingDirectory, 'cards.json'), `${JSON.stringify(recording, null, 2)}\n`, 'utf8');
-console.log(`Saved three model cards and narrator WAV files in ${recordingDirectory}.`);
+console.log(`Saved four model cards and narrator WAV files in ${recordingDirectory}.`);
 
 function createMemoryBuffer(initialItems) {
   const items = [...initialItems];

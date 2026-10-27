@@ -4,7 +4,7 @@ Written by the human side (Kevin Soto, with an AI planning assistant) before any
 
 ## One-liner
 
-When an ad break ends, a raid lands, or a viewer types `!catchup`, Previously On shows a 15-second TV-style "Previously on..." card on stream and posts the same line in chat, so people who missed the last minutes can jump back in.
+Viewers who come back from an ad break or a BRB break, or join mid-stream, get a 15-second recap of what they missed.
 
 ## Who it is for
 
@@ -21,9 +21,12 @@ Hard rule from user research: the AI never talks in chat as if it were a viewer.
 | Raid arrives | EventSub `channel.raid` (condition `to_broadcaster_user_id` = our channel) | last 10 min | card on overlay + one chat line welcoming the raiding channel by name |
 | `!catchup` in chat | EventSub `channel.chat.message` | last 5 min | one chat line replying to that viewer; card on overlay only if no card shown in the last 60 s |
 | Back from break | button "Going on break" then "Back" in the control panel (hotkey B) | the 10 min before the break started | card + chat line |
+| Back from BRB | OBS WebSocket 5.x `CurrentProgramSceneChanged` for the selected `OBS_BREAK_SCENE` | last 10 min before switching to the break scene | review while away; air and post when switching away |
 | Ad break | EventSub `channel.ad_break.begin` v1 (scope `channel:read:ads`); begin recap generation at the event and schedule air at `started_at + duration_seconds` | the 3 min before the ad begins; widen to the 10 min before the ad if the narrow window has no chat, voice or notes | review the card during the ad; at ad end air it if approved or if approval mode is timed, then post the chat line |
 
 Ad breaks only run on affiliate or partner channels. The control panel has a "Simulate ad break (60 s)" button that injects a payload with the exact shape of the documented `channel.ad_break.begin` event into the same handler. Anything simulated is labeled SIMULATED in the panel and in a small corner tag on the overlay. Never hide that a run is simulated.
+
+OBS uses obs-websocket 5.x over the existing `ws` dependency. Read `Hello`, send `Identify` with the documented SHA-256 challenge response when authentication is enabled, request scene events, then request `GetSceneList`. Configuration uses `OBS_WEBSOCKET_URL` (default `ws://127.0.0.1:4455`), `OBS_WEBSOCKET_PASSWORD` and `OBS_BREAK_SCENE`; the selected scene is persisted in `.data/obs-settings.json`. OBS reconnects with backoff and is optional. Entering the selected program scene starts a 10-minute pre-switch recap review; leaving it ends the break. Panel break buttons remain available without OBS.
 
 Build the ad-break recap as soon as the event arrives, using only sources from before the ad. Keep it in the panel with "Airs when the ad break ends" and a countdown for the full break. The streamer may approve or veto it during the ad; approval does not air or post it early. At the end, an approved card airs; an unvetoed card also airs when approval mode is timed. In hold mode it airs only after explicit approval. If the recap is still generating at ad end, keep it pending for up to 10 seconds and air it as soon as it is ready if it qualifies; otherwise drop it. Simulated breaks use the same flow. The static judge demo may show an "Ads playing, 60 s" ticket stub for less than 3 seconds before its recorded ad-break card.
 
@@ -53,7 +56,7 @@ An in-memory ring buffer of source items `{ id, t, kind, text, user }`, also app
 ## Surfaces
 
 - **Overlay** `GET /overlay` (OBS Browser Source, 1920x1080, transparent background). Receives cards over Server-Sent Events from `GET /events`. A roughly 1.4-second broadcast lower-third cold open precedes the ticket: a navy ticket band expands from the left, the label and large channel name rise in, then the band drops and fades as the ticket enters. The `sting.ogg` plays as the band enters. Motion uses transform and opacity; reduced-motion mode skips the cold open. Sound effects and cached narrator audio are optional and fail soft. Keep each ticket on air for at least the narration length plus two seconds. No tokens or secrets in the URL. Visual design comes from `DESIGN.md`.
-- **Control panel** `GET /control` (opened in Chrome on the streamer's machine): connection status, voice capture toggle and live transcript, note field, break buttons, simulate buttons, the pending card with configurable approval, narrator voice and sound effects toggles, and a log of the last 20 cards with their sources and clip links. Ad-break cards are generated while the ad runs and show a countdown to air; approval and veto remain available until the break ends. Other recap cards enter the approval queue immediately while narrator audio is generated in the background. Approval waits at most 3 seconds for voice audio and then continues silently; the generation request times out after 20 seconds. Card text is sent to OpenAI to make narrator audio.
+- **Control panel** `GET /control` (opened in Chrome on the streamer's machine): Twitch and OBS connection status, OBS break-scene picker, voice capture toggle and live transcript, note field, break buttons, simulate buttons, the pending card with configurable approval, narrator voice and sound effects toggles, and a log of the last 20 cards with their sources and clip links. Ad-break and BRB cards are generated during the break and remain reviewable until it ends. Other recap cards enter the approval queue immediately while narrator audio is generated in the background. Approval waits at most 3 seconds for voice audio and then continues silently; the generation request times out after 20 seconds. Card text is sent to OpenAI to make narrator audio.
 - **Chat line**: posted with `POST https://api.twitch.tv/helix/chat/messages` (scope `user:write:chat`), max 500 characters, prefixed `Previously on:`.
 
 ## Twitch connection
@@ -67,10 +70,11 @@ An in-memory ring buffer of source items `{ id, t, kind, text, user }`, also app
 
 - `npm start`: real Twitch.
 - `npm run demo`: no Twitch account or API key needed. With `OPENAI_API_KEY`, uses structured model recaps; without it, uses the deterministic fallback. At startup it loads the first 3 minutes of `fixtures/demo-session.jsonl` at once, spreading their timestamps across the 3 minutes before the current time, then replays the remaining fixture at 4x speed. It fires one of each trigger and shows a DEMO REPLAY banner on the overlay and panel.
-- `npm run record-demo`: with `OPENAI_API_KEY`, runs the demo card pipeline through the ad-break, raid and `!catchup` triggers, and saves grounded cards, their source items and cached narrator WAV files under `web-demo/recording/`. It does not write tokens or `.data/` files.
+- `npm run record-demo`: with `OPENAI_API_KEY`, runs the demo card pipeline through ad-break, BRB, raid and `!catchup` triggers, and saves grounded cards, their source items and cached narrator WAV files under `web-demo/recording/`. It does not write tokens or `.data/` files.
 - `npm run build:web`: validates the recording and builds the static browser demo in `dist-web/`. The site reuses `public/overlay.js` and `public/overlay.css` through a replay adapter, so the recorded cards run the same cold open, sound, narration and ticket sequence without SSE.
 - GitHub Pages deploys the static demo on pushes to `main` with `.github/workflows/pages.yml`.
 - `npm run check-twitch`: validates the token, prints the channel login and `broadcaster_type`, subscribes to chat and waits up to 60 s for one message. Never prints tokens.
+- `npm run check-obs`: authenticates to OBS, prints its version, scene list and current program scene, then exits. It requires `OBS_WEBSOCKET_PASSWORD`.
 - `npm test`: unit tests with `node:test`.
 - `npm run eval`: runs the recap engine over the fixtures and writes `results/eval-<date>.json` with: cards produced, bullets kept vs dropped by the grounding check, fallback rate, and p50/p95 latency.
 - `npm start`: appends one privacy-filtered decision record per card to `results/live-cards.jsonl`; `npm run live-report` prints counts by trigger and status plus p50/p95 latency from that file. Demo and tests do not write live-card records.
@@ -83,7 +87,7 @@ An in-memory ring buffer of source items `{ id, t, kind, text, user }`, also app
 
 - Node.js 22+, ESM JavaScript, as few dependencies as possible (`ws`, `openai`, `zod`). Env loaded with `node --env-file=.env`.
 - Server binds to `127.0.0.1` only. Port from env `PORT`, default 4777.
-- Secrets only in `.env` (gitignored). Provide `.env.example`: `TWITCH_CLIENT_ID`, `TWITCH_CHANNEL`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `BLOCKED_TERMS`, `PORT`.
+- Secrets only in `.env` (gitignored). Provide `.env.example`: `TWITCH_CLIENT_ID`, `TWITCH_CHANNEL`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `BLOCKED_TERMS`, `PORT`, `OBS_WEBSOCKET_URL`, `OBS_WEBSOCKET_PASSWORD`, `OBS_BREAK_SCENE`.
 - Numbers in the README or UI must come from a file in `results/` or a reported test run. Do not invent or round up measured values.
 - No emoji anywhere: UI, logs, commits, docs.
 - English for all code, UI and docs (submission rule).

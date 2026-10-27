@@ -70,7 +70,7 @@ async function startBrowserReplay() {
     const response = await fetch('recording/cards.json');
     if (!response.ok) throw new Error('Recorded cards are not published yet.');
     recording = validateRecording(await response.json());
-    status.textContent = 'Three recorded cards are ready.';
+    status.textContent = 'Four recorded cards are ready.';
     for (const button of buttons) button.disabled = false;
     playInitialCard();
   } catch (error) {

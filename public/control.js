@@ -11,6 +11,11 @@ eventSource.onopen = () => $('#connection-error').hidden = true;
 
 $('#break-button').addEventListener('click', () => post('/api/break'));
 $('#back-button').addEventListener('click', () => post('/api/back'));
+$('#obs-break-scene').addEventListener('change', async event => {
+  try {
+    currentState.obs.breakScene = await post('/api/obs-break-scene', { scene: event.target.value });
+  } catch (error) { showError(error.message); renderConnection(); }
+});
 $('#approval-setting').addEventListener('change', async event => {
   const selected = event.target.value;
   const settings = selected === 'hold' ? { mode: 'hold' } : { mode: 'timed', seconds: Number(selected) };
@@ -155,6 +160,17 @@ function renderConnection() {
   $('#voice-state').className = `state ${currentState.voiceEnabled ? 'connected' : ''}`;
   $('#model-state').textContent = currentState.modelEnabled ? 'AI recap on' : 'No API key, quick recaps only';
   $('#model-state').className = `state ${currentState.modelEnabled ? 'connected' : ''}`;
+  const obsState = currentState.obs ?? { status: 'not configured', scenes: [] };
+  $('#obs-state').textContent = obsState.status === 'connected' ? 'Connected' : obsState.status === 'reconnecting' ? 'Reconnecting' : 'Not configured';
+  $('#obs-state').className = `state ${obsState.status === 'connected' ? 'connected' : ''}`;
+  const scenePicker = $('#obs-break-scene');
+  const selectedScene = obsState.breakScene ?? '';
+  scenePicker.replaceChildren();
+  const noScene = document.createElement('option'); noScene.value = ''; noScene.textContent = 'No break scene selected'; scenePicker.append(noScene);
+  for (const scene of obsState.scenes ?? []) { const option = document.createElement('option'); option.value = scene; option.textContent = scene; scenePicker.append(option); }
+  if (selectedScene && ![...scenePicker.options].some(option => option.value === selectedScene)) { const option = document.createElement('option'); option.value = selectedScene; option.textContent = `${selectedScene} (saved)`; scenePicker.append(option); }
+  scenePicker.value = selectedScene;
+  scenePicker.disabled = obsState.status !== 'connected';
   $('#approval-setting').value = currentState.approvalMode === 'hold' ? 'hold' : String(currentState.approvalSeconds ?? 5);
   $('#narrator-setting').checked = currentState.narratorVoiceEnabled !== false;
   $('#sound-setting').checked = currentState.soundEffectsEnabled !== false;
@@ -196,6 +212,8 @@ function renderPending() {
   const top = document.createElement('div');
   top.className = 'pending-top';
   const isAdBreak = card.trigger === 'ad-break';
+  const isSceneBreak = card.trigger === 'brb';
+  const isBreakReview = isAdBreak || isSceneBreak;
   const trigger = document.createElement('span');
   trigger.textContent = triggerName(card.trigger);
   top.append(trigger);
@@ -206,7 +224,7 @@ function renderPending() {
     top.append(tag);
   }
   const status = document.createElement('span');
-  status.textContent = card.vetoed ? 'VETOED' : card.approved ? (isAdBreak ? 'APPROVED FOR BREAK END' : 'APPROVED') : card.building ? 'BUILDING' : 'WAITING';
+  status.textContent = card.vetoed ? 'VETOED' : card.approved ? (isBreakReview ? 'APPROVED FOR BREAK END' : 'APPROVED') : card.building ? 'BUILDING' : 'WAITING';
   top.append(status);
 
   const mini = document.createElement('div');
@@ -217,7 +235,7 @@ function renderPending() {
   headline.textContent = card.headline || 'Preparing the recap.';
   const lineInfo = document.createElement('p');
   lineInfo.textContent = card.building
-    ? card.adBreakPhase === 'finishing' ? 'The ad ended; waiting for the recap.' : 'Using moments from before the ad.'
+    ? card.adBreakPhase === 'finishing' ? 'The break ended; waiting for the recap.' : `Using moments from before ${isSceneBreak ? 'the BRB scene' : 'the ad'}.`
     : `${card.bullets.length} recap ${card.bullets.length === 1 ? 'line' : 'lines'}`;
   const provenance = document.createElement('p');
   provenance.textContent = formatProvenance(card.provenance);
@@ -227,13 +245,14 @@ function renderPending() {
   stub.className = 'mini-stub';
   const countdownLabel = document.createElement('span');
   countdownLabel.className = 'countdown-label';
-  const heldForApproval = !isAdBreak && card.approvalMode === 'hold';
-  countdownLabel.textContent = isAdBreak
-    ? card.adBreakPhase === 'finishing' ? 'Recap ready within' : 'Airs when the ad break ends'
+  const heldForApproval = !isBreakReview && card.approvalMode === 'hold';
+  countdownLabel.textContent = isBreakReview
+    ? card.adBreakPhase === 'finishing' ? 'Recap ready within' : `Airs when you leave ${isSceneBreak ? 'the BRB scene' : 'the ad break'}`
     : heldForApproval ? 'Waiting for approval' : 'Auto-approves in';
   const countdown = document.createElement('b');
   countdown.className = 'countdown';
-  countdown.textContent = String(Math.ceil((card.remainingMs ?? (card.approvalSeconds ?? 5) * 1000) / 1000));
+  const sceneBreakWaiting = isSceneBreak && card.adBreakPhase !== 'finishing';
+  countdown.textContent = sceneBreakWaiting ? 'BRB' : String(Math.ceil((card.remainingMs ?? (card.approvalSeconds ?? 5) * 1000) / 1000));
   if (heldForApproval) {
     const hold = document.createElement('div');
     hold.className = 'hold-display';
@@ -246,6 +265,8 @@ function renderPending() {
     hold.append(hourglass, holdLabel);
     stub.classList.add('is-held');
     stub.append(countdownLabel, hold);
+  } else if (sceneBreakWaiting) {
+    stub.append(countdownLabel, countdown);
   } else {
     const meter = document.createElement('span');
     meter.className = 'meter';
@@ -275,7 +296,7 @@ function renderPending() {
   box.append(top, mini, actions);
   box.dataset.deadline = String(card.deadline ?? (heldForApproval ? '' : Date.now() + (card.remainingMs ?? (card.approvalSeconds ?? 5) * 1000)));
   box.dataset.duration = String((card.approvalSeconds ?? 5) * 1000);
-  box.dataset.held = String(heldForApproval);
+  box.dataset.held = String(heldForApproval || sceneBreakWaiting);
 }
 
 function updateCountdown() {
@@ -396,7 +417,7 @@ function formatProvenance(provenance) {
 }
 
 function triggerName(trigger) {
-  return ({ raid: 'Raid', catchup: '!catchup', break: 'Back from break', 'ad-break': 'Ad break' })[trigger] ?? trigger;
+  return ({ raid: 'Raid', catchup: '!catchup', break: 'Back from break', brb: 'Back from BRB', 'ad-break': 'Ad break' })[trigger] ?? trigger;
 }
 
 function makeButton(label, iconName, className) {

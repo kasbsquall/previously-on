@@ -20,7 +20,7 @@ export async function captureRecordedCard(pipeline, { trigger, action, audioTime
   if (pending.trigger !== trigger) throw new Error(`Expected ${trigger}, received ${pending.trigger}.`);
   const audio = await pipeline.waitForAudio(pending.id, audioTimeoutMs);
   if (!audio) throw new Error(`Narrator audio was not ready for ${trigger}.`);
-  if (trigger === 'ad-break') {
+  if (trigger === 'ad-break' || trigger === 'brb') {
     let airedEvent;
     const aired = new Promise(resolve => {
       airedEvent = card => {
@@ -32,6 +32,7 @@ export async function captureRecordedCard(pipeline, { trigger, action, audioTime
     });
     try {
       await pipeline.approve(pending.id);
+      if (trigger === 'brb') pipeline.endBrbBreak();
       if (pipeline.getState().onAir?.id === pending.id) pipeline.off('card:show', airedEvent);
       else await aired;
     } catch (error) {

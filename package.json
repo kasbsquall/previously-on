@@ -12,6 +12,7 @@
     "record-demo": "node --env-file-if-exists=.env src/record-demo.js",
     "build:web": "node src/build-web.js",
     "check-twitch": "node --env-file=.env src/check-twitch.js",
+    "check-obs": "node --env-file=.env src/check-obs.js",
     "eval": "node --env-file-if-exists=.env src/eval.js",
     "live-report": "node src/live-report.js",
     "test": "node --test"

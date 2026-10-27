@@ -83,7 +83,7 @@ export function createCardPipeline({
   }
 
   async function buildCard({ trigger, event, simulated = false, from, fallbackFrom, to, overlayEligible = true, triggerInfo = {}, receiptPromise, adBreakReview = null }) {
-    if (!adBreakReview && pending?.trigger === 'ad-break' && activeAdBreak) {
+    if (!adBreakReview && ['ad-break', 'brb'].includes(pending?.trigger) && activeAdBreak) {
       closeAdBreakWithoutAir(activeAdBreak, 'Replaced');
     }
     const sequence = ++latestTriggerSequence;
@@ -110,8 +110,8 @@ export function createCardPipeline({
       bullets = [{ text: 'The stream just got started, nothing to catch up on yet', sources: [] }];
       engine = 'fallback';
       provenance = recapResult.provenance;
-    } else if (!hasContent && trigger === 'ad-break') {
-      recordDroppedAdBreak({ simulated, provenance });
+    } else if (!hasContent && ['ad-break', 'brb'].includes(trigger)) {
+      recordDroppedAdBreak({ simulated, provenance, trigger, triggerInfo });
       if (adBreakReview) closeAdBreakWithoutAir(adBreakReview, 'No recap');
       return null;
     } else if (!hasContent || !bullets.length) {
@@ -212,11 +212,11 @@ export function createCardPipeline({
     return publicCard(card);
   }
 
-  function recordDroppedAdBreak({ simulated, provenance }) {
-    const headline = 'Ad break: nothing new to recap';
+  function recordDroppedAdBreak({ simulated, provenance, trigger = 'ad-break', triggerInfo = { name: 'Ad break' } }) {
+    const headline = trigger === 'brb' ? 'BRB break: nothing new to recap' : 'Ad break: nothing new to recap';
     log(headline);
     addLog({
-      id: randomUUID(), channel, trigger: 'ad-break', triggerInfo: { name: 'Ad break' },
+      id: randomUUID(), channel, trigger, triggerInfo,
       simulated, headline, bullets: [], welcomeOnly: false, sourceDetails: [], provenance,
       engine: 'fallback', latencyMs: 0, droppedBullets: [], overlayEligible: false,
       status: 'Dropped', createdAt: now()
@@ -297,10 +297,10 @@ export function createCardPipeline({
       addLog(review.card);
       recordDecision(review.card);
     } else if (status === 'Dropped') {
-      const headline = 'Ad break: recap was not ready within 10 seconds';
+      const headline = review.trigger === 'brb' ? 'BRB break: recap was not ready within 10 seconds' : 'Ad break: recap was not ready within 10 seconds';
       log(headline);
       addLog({
-        id: review.id, channel, trigger: 'ad-break', triggerInfo: review.triggerInfo,
+        id: review.id, channel, trigger: review.trigger, triggerInfo: review.triggerInfo,
         simulated: review.simulated, headline, bullets: [], sourceDetails: [],
         provenance: { voiceSeconds: 0, chatCount: 0, eventCount: 0, noteCount: 0 },
         engine: 'fallback', latencyMs: 0, droppedBullets: [], overlayEligible: false,
@@ -440,7 +440,7 @@ export function createCardPipeline({
   }
 
   function setPendingTimer(card) {
-    if (card.trigger === 'ad-break') {
+    if (['ad-break', 'brb'].includes(card.trigger)) {
       card.timer = null;
       return;
     }
@@ -507,8 +507,8 @@ export function createCardPipeline({
     });
   }
 
-  async function handleAdBreak(event, { simulated = false, timeScale = adBreakTimeScale } = {}) {
-    const eventText = `ad break began for ${event.duration_seconds} seconds`;
+  async function handleAdBreak(event, { simulated = false, timeScale = adBreakTimeScale, trigger = 'ad-break', endOnSceneLeave = false, requestReceipt = true } = {}) {
+    const eventText = trigger === 'brb' ? 'streamer switched to the BRB scene' : `ad break began for ${event.duration_seconds} seconds`;
     const receivedAt = now();
     const receivedTime = new Date(receivedAt).toISOString();
     await sourceBuffer.add({
@@ -518,24 +518,24 @@ export function createCardPipeline({
       text: eventText,
       user: event.requester_user_name
     });
-    const receiptPromise = captureReceipt('ad-break', simulated);
+    const receiptPromise = requestReceipt ? captureReceipt('ad-break', simulated) : null;
     const start = receivedAt;
     const durationSeconds = Number(event.duration_seconds);
     const scheduledAt = start + durationSeconds * 1000;
-    const delay = Math.max(0, (scheduledAt - now()) * timeScale);
+    const delay = endOnSceneLeave ? null : Math.max(0, (scheduledAt - now()) * timeScale);
     if (activeAdBreak) closeAdBreakWithoutAir(activeAdBreak, 'Replaced');
     if (pending) replacePending(pending);
-    const triggerInfo = { seconds: durationSeconds, name: 'Ad break' };
+    const triggerInfo = trigger === 'brb' ? { name: 'Back from BRB', minutesAway: null } : { seconds: durationSeconds, name: 'Ad break' };
     const review = {
       id: randomUUID(), startedAt: start, scheduledAt,
-      countdownEndAt: now() + delay, durationMs: delay,
+      trigger, endOnSceneLeave, countdownEndAt: delay === null ? null : now() + delay, durationMs: delay,
       simulated, triggerInfo, approvalMode: approvalSettings.get().mode,
       approvalSeconds: approvalSettings.get().seconds, approved: false,
       vetoed: false, building: true, ended: false, closed: false,
       card: null, endTimer: null, graceTimer: null
     };
     const placeholder = {
-      id: review.id, channel, trigger: 'ad-break', triggerInfo, simulated,
+      id: review.id, channel, trigger, triggerInfo, simulated,
       headline: 'Preparing the recap from before the ad.', bullets: [], sourceDetails: [], sourceItems: [],
       provenance: { voiceSeconds: 0, chatCount: 0, eventCount: 0, noteCount: 0 },
       engine: 'fallback', latencyMs: 0, droppedBullets: [], overlayEligible: true,
@@ -549,10 +549,10 @@ export function createCardPipeline({
     pending = placeholder;
     emitter.emit('pending', publicCard(pending));
     publishState();
-    review.endTimer = setTimer(() => handleAdBreakEnd(review), delay);
+    if (delay !== null) review.endTimer = setTimer(() => handleAdBreakEnd(review), delay);
     void buildCard({
-      trigger: 'ad-break', event, simulated, adBreakReview: review,
-      from: start - 180_000,
+      trigger, event, simulated, adBreakReview: review,
+      from: start - (trigger === 'brb' ? 10 * 60_000 : 180_000),
       fallbackFrom: start - 10 * 60_000,
       to: start,
       triggerInfo, receiptPromise
@@ -575,6 +575,33 @@ export function createCardPipeline({
     emitter.emit('break', { onBreak: true, startedAt: breakStartedAt });
     publishState();
     return breakStartedAt;
+  }
+
+  function startBrbBreak({ simulated = false } = {}) {
+    if (activeAdBreak) closeAdBreakWithoutAir(activeAdBreak, 'Replaced');
+    const timestamp = new Date(now()).toISOString();
+    const event = {
+      duration_seconds: 86_400, started_at: timestamp, is_automatic: false,
+      broadcaster_user_id: broadcasterId ?? 'local-broadcaster',
+      broadcaster_user_login: channel.toLowerCase(), broadcaster_user_name: channel,
+      requester_user_id: broadcasterId ?? 'local-broadcaster', requester_user_login: channel.toLowerCase(),
+      requester_user_name: channel
+    };
+    return handleAdBreak(event, { trigger: 'brb', endOnSceneLeave: true, requestReceipt: false, simulated });
+  }
+
+  function endBrbBreak() {
+    const review = activeAdBreak;
+    if (!review || review.trigger !== 'brb' || review.closed) return false;
+    const awayMs = Math.max(0, now() - review.startedAt);
+    review.triggerInfo.minutesAway = Math.max(1, Math.round(awayMs / 60_000));
+    if (review.card) review.card.triggerInfo = { ...review.triggerInfo };
+    review.scheduledAt = now();
+    review.countdownEndAt = now();
+    review.durationMs = awayMs;
+    review.ended = true;
+    handleAdBreakEnd(review);
+    return true;
   }
 
   async function backFromBreak({ simulated = breakSimulated || mode === 'demo' } = {}) {
@@ -679,6 +706,8 @@ export function createCardPipeline({
     handleChat,
     handleRaid,
     handleAdBreak,
+    startBrbBreak,
+    endBrbBreak,
     goingOnBreak,
     backFromBreak,
     simulateAdBreak,

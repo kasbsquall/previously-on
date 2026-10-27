@@ -22,9 +22,15 @@
         <h2><i class="ph-light ph-plugs-connected" aria-hidden="true"></i> Connection</h2>
         <ul class="status-list">
           <li><i class="ph-light ph-broadcast" aria-hidden="true"></i><span>Twitch</span><b class="state" id="connection-state"><span class="dot"></span>Loading</b></li>
+          <li><i class="ph-light ph-video-camera" aria-hidden="true"></i><span>OBS</span><b class="state" id="obs-state">Loading</b></li>
           <li><i class="ph-light ph-microphone" aria-hidden="true"></i><span>Voice capture</span><b class="state" id="voice-state">Loading</b></li>
           <li><i class="ph-light ph-cpu" aria-hidden="true"></i><span>Model</span><b class="state" id="model-state">Loading</b></li>
         </ul>
+        <div class="approval-setting obs-scene-setting">
+          <label for="obs-break-scene">Break scene</label>
+          <select id="obs-break-scene" disabled><option value="">No break scene selected</option></select>
+          <p>Switching to this OBS program scene starts a review card; switching away ends the break.</p>
+        </div>
         <div class="approval-setting">
           <label for="approval-setting">Approval behavior</label>
           <select id="approval-setting">

@@ -159,9 +159,9 @@ function renderTrigger(card) {
   } else if (card.trigger === 'catchup') {
     small.textContent = 'Asked by';
     name.textContent = card.triggerInfo.name;
-  } else if (card.trigger === 'break') {
+  } else if (card.trigger === 'break' || card.trigger === 'brb') {
     small.textContent = 'Back from';
-    name.textContent = 'Break';
+    name.textContent = card.trigger === 'brb' ? 'BRB' : 'Break';
     count.hidden = false;
     number.textContent = String(card.triggerInfo.minutesAway);
     unit.textContent = 'min';

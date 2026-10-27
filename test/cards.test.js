@@ -569,3 +569,24 @@ test('simulated ad break uses the documented EventSub event fields and schedules
   assert.equal(result.scheduledAt, clock.now + 60_000);
   assert.equal(scheduled.payload, result.payload);
 });
+
+test('BRB scene review can be approved while away and only airs when the streamer returns', async () => {
+  const { pipeline, clock, stored, sent } = makeHarness({ recap: recapFromAdWindow });
+  await stored.push({ id: 'before-brb', t: new Date(clock.now - 60_000).toISOString(), kind: 'note', text: 'The garden gate is repaired.', user: 'MeadowMoth' });
+  await pipeline.startBrbBreak();
+  await new Promise(resolve => setImmediate(resolve));
+  let pending = pipeline.getState().pending;
+  assert.equal(pending.trigger, 'brb');
+  assert.equal(pending.triggerInfo.name, 'Back from BRB');
+  assert.equal(pending.simulated, false);
+  assert.equal(await pipeline.approve(pending.id), true);
+  assert.equal(pipeline.getState().onAir, null);
+  assert.equal(sent.length, 0);
+  clock.now += 4 * 60_000;
+  assert.equal(pipeline.endBrbBreak(), true);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.ok(pipeline.getState().onAir);
+  assert.equal(pipeline.getState().onAir.trigger, 'brb');
+  assert.equal(pipeline.getState().onAir.triggerInfo.minutesAway, 4);
+  assert.equal(sent.length, 1);
+});
