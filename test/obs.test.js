@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { WebSocketServer } from 'ws';
-import { createObsClient, obsAuthentication } from '../src/obs/client.js';
+import { createObsClient, obsAuthentication, OBS_SCENE_POLL_INTERVAL_MS } from '../src/obs/client.js';
 import { createBreakSceneSettings } from '../src/obs/break-scene-settings.js';
 import { createBrbSceneController } from '../src/obs/brb-scenes.js';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
@@ -10,29 +10,50 @@ import { join } from 'node:path';
 
 const password = 'test-password';
 
-test('OBS client authenticates Hello, subscribes to scenes, and reads scene list', async t => {
+test('OBS client authenticates Hello, subscribes to scene and transition events, and reads scene list', async t => {
   const server = await mockObsServer(); t.after(() => server.close());
   const client = createObsClient({ url: server.url, password }); t.after(() => client.close());
   const identified = server.nextIdentified;
   const state = waitFor(client, 'state', value => value.status === 'connected');
   client.start();
   const identify = await identified;
-  assert.equal(identify.eventSubscriptions, 1 << 2);
+  assert.equal(identify.eventSubscriptions, (1 << 2) | (1 << 4));
   assert.equal(identify.authentication, obsAuthentication(password, server.salt, server.challenge));
   assert.equal((await state).status, 'connected');
   await waitFor(client, 'scenes');
   const result = await client.getSceneList();
   assert.deepEqual(result.scenes, ['Gameplay', 'BRB']);
   assert.equal(result.currentProgramSceneName, 'Gameplay');
-  const transitions = [];
-  client.on('program-scene', createBrbSceneController({
-    pipeline: { startBrbBreak: () => transitions.push('start'), endBrbBreak: () => transitions.push('end') },
-    getBreakScene: () => 'BRB'
-  }));
-  server.emitProgramScene('BRB');
-  server.emitProgramScene('Gameplay');
-  await new Promise(resolve => setImmediate(resolve));
-  assert.deepEqual(transitions, ['start', 'end']);
+  const scenes = [];
+  client.on('program-scene', scene => scenes.push(scene));
+  server.switchScene('BRB', 'SceneTransitionEnded');
+  await waitFor(client, 'program-scene', scene => scene === 'BRB');
+  assert.deepEqual(scenes, ['BRB']);
+});
+
+test('OBS polls GetCurrentProgramScene every two seconds as a fallback', async t => {
+  assert.equal(OBS_SCENE_POLL_INTERVAL_MS, 2000);
+  const server = await mockObsServer(); t.after(() => server.close());
+  const client = createObsClient({ url: server.url, password, scenePollIntervalMs: 20 }); t.after(() => client.close());
+  client.start();
+  await waitFor(client, 'scenes');
+  const sceneChanged = waitFor(client, 'program-scene', scene => scene === 'BRB');
+  server.setProgramScene('BRB');
+  assert.equal(await sceneChanged, 'BRB');
+});
+
+test('transition and scene-change notifications do not emit the same scene twice', async t => {
+  const server = await mockObsServer(); t.after(() => server.close());
+  const client = createObsClient({ url: server.url, password, scenePollIntervalMs: 10 }); t.after(() => client.close());
+  client.start();
+  await waitFor(client, 'scenes');
+  const emitted = [];
+  client.on('program-scene', scene => emitted.push(scene));
+  server.switchScene('BRB', 'SceneTransitionEnded');
+  server.switchScene('BRB', 'CurrentProgramSceneChanged');
+  await waitFor(client, 'program-scene', scene => scene === 'BRB');
+  await new Promise(resolve => setTimeout(resolve, 40));
+  assert.deepEqual(emitted, ['BRB']);
 });
 
 test('OBS rejects an incorrect password without exposing it in state', async t => {
@@ -98,9 +119,14 @@ async function mockObsServer() {
     url: `ws://127.0.0.1:${wss.address().port}`, challenge, salt, sockets: [], connections: 0,
     nextIdentified: null, nextConnection: null
   };
+  let currentScene = 'Gameplay';
   helper.nextIdentified = new Promise(resolve => { helper.resolveIdentified = resolve; });
   helper.nextConnection = new Promise(resolve => { helper.resolveConnection = resolve; });
-  helper.emitProgramScene = sceneName => helper.sockets.at(-1)?.send(JSON.stringify({ op: 5, d: { eventType: 'CurrentProgramSceneChanged', eventIntent: 4, eventData: { sceneName, sceneUuid: 'scene-id' } } }));
+  helper.setProgramScene = sceneName => { currentScene = sceneName; };
+  helper.switchScene = (sceneName, eventType) => {
+    currentScene = sceneName;
+    helper.sockets.at(-1)?.send(JSON.stringify({ op: 5, d: { eventType, eventIntent: eventType === 'SceneTransitionEnded' ? 16 : 4, eventData: { sceneName, sceneUuid: 'scene-id' } } }));
+  };
   wss.on('connection', socket => {
     helper.sockets.push(socket); helper.connections++;
     if (helper.connections > 1) helper.resolveConnection();
@@ -112,7 +138,9 @@ async function mockObsServer() {
         if (message.d.authentication !== obsAuthentication(password, salt, challenge)) { socket.close(4009, 'Authentication failed'); return; }
         socket.send(JSON.stringify({ op: 2, d: { negotiatedRpcVersion: 1 } }));
       } else if (message.op === 6 && message.d.requestType === 'GetSceneList') {
-        socket.send(JSON.stringify({ op: 7, d: { requestType: 'GetSceneList', requestId: message.d.requestId, requestStatus: { result: true, code: 100 }, responseData: { currentProgramSceneName: 'Gameplay', scenes: [{ sceneName: 'Gameplay' }, { sceneName: 'BRB' }] } } }));
+        socket.send(JSON.stringify({ op: 7, d: { requestType: 'GetSceneList', requestId: message.d.requestId, requestStatus: { result: true, code: 100 }, responseData: { currentProgramSceneName: currentScene, scenes: [{ sceneName: 'Gameplay' }, { sceneName: 'BRB' }] } } }));
+      } else if (message.op === 6 && message.d.requestType === 'GetCurrentProgramScene') {
+        socket.send(JSON.stringify({ op: 7, d: { requestType: 'GetCurrentProgramScene', requestId: message.d.requestId, requestStatus: { result: true, code: 100 }, responseData: { sceneName: currentScene, sceneUuid: 'scene-id' } } }));
       }
     });
   });

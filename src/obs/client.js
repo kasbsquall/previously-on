@@ -2,7 +2,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import WebSocket from 'ws';
 
-const SCENE_EVENTS = 1 << 2;
+const SCENE_EVENTS = (1 << 2) | (1 << 4);
+export const OBS_SCENE_POLL_INTERVAL_MS = 2000;
 
 export function obsAuthentication(password, salt, challenge) {
   const secret = createHash('sha256').update(`${password}${salt}`).digest('base64');
@@ -15,7 +16,8 @@ export function createObsClient({
   WebSocketImpl = WebSocket,
   setTimer = setTimeout,
   clearTimer = clearTimeout,
-  random = Math.random
+  random = Math.random,
+  scenePollIntervalMs = OBS_SCENE_POLL_INTERVAL_MS
 } = {}) {
   const emitter = new EventEmitter();
   emitter.on('error', () => {});
@@ -28,7 +30,8 @@ export function createObsClient({
   let scenes = [];
   let currentProgramScene = null;
   let requestWaiters = new Map();
-  let helloWaiter = null;
+  let scenePollTimer = null;
+  let sceneRefreshPromise = null;
 
   const status = () => ({
     status: !password ? 'not configured' : connected ? 'connected' : 'reconnecting',
@@ -51,6 +54,34 @@ export function createObsClient({
 
   function publish() { emitter.emit('state', status()); }
 
+  function updateProgramScene(sceneName) {
+    if (typeof sceneName !== 'string' || !sceneName || sceneName === currentProgramScene) return;
+    currentProgramScene = sceneName;
+    emitter.emit('program-scene', currentProgramScene);
+    publish();
+  }
+
+  function refreshProgramScene() {
+    if (!connected) return Promise.resolve(null);
+    if (sceneRefreshPromise) return sceneRefreshPromise;
+    sceneRefreshPromise = request('GetCurrentProgramScene').then(result => {
+      updateProgramScene(result.sceneName ?? result.currentProgramSceneName);
+      return currentProgramScene;
+    }).catch(error => {
+      if (!closedByUser) emitter.emit('error', error);
+      return null;
+    }).finally(() => { sceneRefreshPromise = null; });
+    return sceneRefreshPromise;
+  }
+
+  function scheduleScenePoll() {
+    if (scenePollTimer || !connected || closedByUser) return;
+    scenePollTimer = setTimer(() => {
+      scenePollTimer = null;
+      void refreshProgramScene().finally(scheduleScenePoll);
+    }, scenePollIntervalMs);
+  }
+
   function scheduleReconnect() {
     if (closedByUser || retryTimer) return;
     connected = false;
@@ -70,20 +101,19 @@ export function createObsClient({
       const d = message.d ?? {};
       if (message.op === 0) {
         version = d.obsStudioVersion ?? null;
-        helloWaiter = d;
         const authentication = d.authentication ? obsAuthentication(password, d.authentication.salt, d.authentication.challenge) : undefined;
         send(1, { rpcVersion: d.rpcVersion, eventSubscriptions: SCENE_EVENTS, ...(authentication ? { authentication } : {}) });
       } else if (message.op === 2) {
         connected = true; retryCount = 0; publish();
         void request('GetSceneList').then(result => {
           scenes = (result.scenes ?? []).map(scene => scene.sceneName).filter(name => typeof name === 'string');
-          currentProgramScene = result.currentProgramSceneName ?? null;
-          emitter.emit('scenes', scenes.slice()); emitter.emit('program-scene', currentProgramScene); publish();
+          updateProgramScene(result.currentProgramSceneName);
+          emitter.emit('scenes', scenes.slice()); publish();
         }).catch(error => emitter.emit('error', error));
+        scheduleScenePoll();
       } else if (message.op === 5) {
-        if (d.eventType === 'CurrentProgramSceneChanged') {
-          currentProgramScene = d.eventData?.sceneName ?? null;
-          emitter.emit('program-scene', currentProgramScene); publish();
+        if (d.eventType === 'CurrentProgramSceneChanged' || d.eventType === 'SceneTransitionEnded') {
+          void refreshProgramScene();
         } else if (d.eventType === 'SceneListChanged') {
           scenes = (d.eventData?.scenes ?? []).map(scene => scene.sceneName).filter(Boolean);
           emitter.emit('scenes', scenes.slice()); publish();
@@ -96,7 +126,13 @@ export function createObsClient({
         else waiter.resolve(d.responseData ?? {});
       }
     });
-    socket.on('close', () => { connected = false; failWaiters(new Error('OBS connection closed.')); scheduleReconnect(); });
+    socket.on('close', () => {
+      connected = false;
+      if (scenePollTimer) clearTimer(scenePollTimer);
+      scenePollTimer = null;
+      failWaiters(new Error('OBS connection closed.'));
+      scheduleReconnect();
+    });
     socket.on('error', () => {});
   }
 
@@ -109,7 +145,8 @@ export function createObsClient({
   function close() {
     closedByUser = true; connected = false;
     if (retryTimer) clearTimer(retryTimer);
-    retryTimer = null; failWaiters(new Error('OBS client closed.'));
+    if (scenePollTimer) clearTimer(scenePollTimer);
+    retryTimer = null; scenePollTimer = null; failWaiters(new Error('OBS client closed.'));
     socket?.close();
   }
 
