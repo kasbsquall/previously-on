@@ -37,7 +37,7 @@ function makeHarness(options = {}) {
     clearTimer: clock.clearTimer.bind(clock),
     ...options
   });
-  return { pipeline, clock, stored, sent };
+  return { pipeline, clock, stored, sent, sourceBuffer };
 }
 
 function makeClock(initial) {
@@ -241,7 +241,8 @@ test('raid with no recap sources shows a welcome ticket and still sends the welc
 });
 
 test('an ad break with only event sources does not create a pending recap card', async () => {
-  const { pipeline, clock } = makeHarness({ recap: buildRecap });
+  const logged = [];
+  const { pipeline, clock } = makeHarness({ recap: buildRecap, log: line => logged.push(line) });
   const result = await pipeline.handleAdBreak({
     duration_seconds: 1,
     started_at: new Date(start).toISOString(),
@@ -251,7 +252,34 @@ test('an ad break with only event sources does not create a pending recap card',
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(result.payload.duration_seconds, 1);
   assert.equal(pipeline.getState().pending, null);
-  assert.equal(pipeline.getState().cards.length, 0);
+  assert.equal(pipeline.getState().cards[0].status, 'Dropped');
+  assert.equal(pipeline.getState().cards[0].headline, 'Ad break: nothing new to recap');
+  assert.deepEqual(logged, ['Ad break: nothing new to recap']);
+});
+
+test('an ad break widens its window from three to ten minutes when the narrow window has no content', async () => {
+  let recapItems = [];
+  const { pipeline, clock, sourceBuffer } = makeHarness({ recap: async ({ items }) => {
+    recapItems = items;
+    const voice = items.find(item => item.kind === 'voice');
+    return {
+      headline: 'The forest path is open',
+      bullets: voice ? [{ text: voice.text, sources: [voice.id] }] : [],
+      provenance: { voiceSeconds: 0, chatCount: 0, eventCount: items.filter(item => item.kind === 'event').length, noteCount: 0 },
+      engine: 'fallback', latencyMs: 1
+    };
+  } });
+  await sourceBuffer.add({ t: new Date(start - 8 * 60_000).toISOString(), kind: 'voice', text: 'The forest path is open.', user: 'MeadowMoth' });
+  await pipeline.handleAdBreak({
+    duration_seconds: 1,
+    started_at: new Date(start).toISOString(),
+    requester_user_name: 'MeadowMoth'
+  }, { timeScale: 0 });
+  await clock.advance(0);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(recapItems.some(item => item.kind === 'voice'), true);
+  assert.equal(pipeline.getState().pending.trigger, 'ad-break');
+  assert.equal(pipeline.getState().pending.bullets[0].text, 'The forest path is open.');
 });
 
 test('approved catch-up replies to the triggering chat message', async () => {
@@ -320,6 +348,9 @@ test('simulated ad break uses the documented EventSub event fields and schedules
   let scheduled;
   pipeline.on('ad-break:scheduled', data => { scheduled = data; });
   const result = await pipeline.simulateAdBreak();
+  assert.deepEqual(Object.keys(result), ['payload', 'scheduledAt']);
+  assert.doesNotThrow(() => JSON.stringify(result));
+  assert.deepEqual(Object.keys(scheduled), ['payload', 'scheduledAt']);
   assert.deepEqual(Object.keys(result.payload), [
     'duration_seconds', 'started_at', 'is_automatic', 'broadcaster_user_id', 'broadcaster_user_login',
     'broadcaster_user_name', 'requester_user_id', 'requester_user_login', 'requester_user_name'

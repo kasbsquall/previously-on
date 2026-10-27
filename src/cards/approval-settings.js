@@ -7,7 +7,9 @@ export function normalizeApprovalSettings(value = {}) {
   if (value.mode === 'hold') return { mode: 'hold', seconds: null };
   const seconds = Number(value.seconds);
   if (value.mode !== 'timed' || ![5, 10, 20].includes(seconds)) {
-    throw new TypeError('Choose an auto-approve delay of 5, 10, or 20 seconds, or hold for approval.');
+    const error = new TypeError('Choose an auto-approve delay of 5, 10, or 20 seconds, or hold for approval.');
+    error.statusCode = 400;
+    throw error;
   }
   return { mode: 'timed', seconds };
 }

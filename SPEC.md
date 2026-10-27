@@ -21,7 +21,7 @@ Hard rule from user research: the AI never talks in chat as if it were a viewer.
 | Raid arrives | EventSub `channel.raid` (condition `to_broadcaster_user_id` = our channel) | last 10 min | card on overlay + one chat line welcoming the raiding channel by name |
 | `!catchup` in chat | EventSub `channel.chat.message` | last 5 min | one chat line replying to that viewer; card on overlay only if no card shown in the last 60 s |
 | Back from break | button "Going on break" then "Back" in the control panel (hotkey B) | the 10 min before the break started | card + chat line |
-| Ad break | EventSub `channel.ad_break.begin` v1 (scope `channel:read:ads`); schedule the card at `started_at + duration_seconds` | the ad break plus the 3 min before it | card + chat line |
+| Ad break | EventSub `channel.ad_break.begin` v1 (scope `channel:read:ads`); schedule the card at `started_at + duration_seconds` | the ad break plus the 3 min before it; widen to 10 min before the break if that window has no chat, voice or notes | card + chat line |
 
 Ad breaks only run on affiliate or partner channels. The control panel has a "Simulate ad break (60 s)" button that injects a payload with the exact shape of the documented `channel.ad_break.begin` event into the same handler. Anything simulated is labeled SIMULATED in the panel and in a small corner tag on the overlay. Never hide that a run is simulated.
 
@@ -62,7 +62,7 @@ An in-memory ring buffer of source items `{ id, t, kind, text, user }`, also app
 ## Modes
 
 - `npm start`: real Twitch.
-- `npm run demo`: no Twitch account or API key needed. With `OPENAI_API_KEY`, uses structured model recaps; without it, uses the deterministic fallback. Replays `fixtures/demo-session.jsonl` through the same pipeline at 4x speed, fires one of each trigger, and shows a DEMO REPLAY banner on the overlay and panel.
+- `npm run demo`: no Twitch account or API key needed. With `OPENAI_API_KEY`, uses structured model recaps; without it, uses the deterministic fallback. Replays `fixtures/demo-session.jsonl` through the same pipeline at 4x speed, with replay timestamps aligned to the local clock so trigger windows include the replayed sources. It fires one of each trigger and shows a DEMO REPLAY banner on the overlay and panel.
 - `npm run check-twitch`: validates the token, prints the channel login and `broadcaster_type`, subscribes to chat and waits up to 60 s for one message. Never prints tokens.
 - `npm test`: unit tests with `node:test`.
 - `npm run eval`: runs the recap engine over the fixtures and writes `results/eval-<date>.json` with: cards produced, bullets kept vs dropped by the grounding check, fallback rate, and p50/p95 latency.

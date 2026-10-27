@@ -21,7 +21,8 @@ export function createCardPipeline({
   adBreakTimeScale = 1,
   onDecided,
   approvalSettings = createApprovalSettings(),
-  logChat = line => console.log(`Chat preview: ${line}`)
+  logChat = line => console.log(`Chat preview: ${line}`),
+  log = line => console.log(line)
 }) {
   const emitter = new EventEmitter();
   const cooldowns = new Map();
@@ -72,12 +73,15 @@ export function createCardPipeline({
     Promise.resolve(onDecided(card, mode)).catch(error => emitter.emit('log:error', error));
   }
 
-  async function buildCard({ trigger, event, simulated = false, from, to, overlayEligible = true, triggerInfo = {} }) {
+  async function buildCard({ trigger, event, simulated = false, from, fallbackFrom, to, overlayEligible = true, triggerInfo = {} }) {
     const sequence = ++latestTriggerSequence;
     const end = to ?? now();
     const start = from ?? end - (trigger === 'raid' ? 10 : trigger === 'catchup' ? 5 : 10) * 60_000;
     const windowMinutes = trigger === 'catchup' ? 5 : trigger === 'ad-break' ? 4 : 10;
-    const selected = await sourceBuffer.window({ from: start, to: end, max: 120 });
+    let selected = await sourceBuffer.window({ from: start, to: end, max: 120 });
+    if (trigger === 'ad-break' && !hasRecapSources(selected)) {
+      selected = await sourceBuffer.window({ from: fallbackFrom ?? end - 10 * 60_000, to: end, max: 120 });
+    }
     const items = selected.map((item, index) => ({ ...item, id: `S${index + 1}` }));
     const recapResult = await recap({ trigger, items, channel, windowMinutes });
     if (sequence !== latestTriggerSequence) return null;
@@ -86,14 +90,17 @@ export function createCardPipeline({
     let engine = recapResult.engine;
     let provenance = recapResult.provenance;
     let welcomeOnly = false;
-    const hasRecapSources = items.some(item => ['voice', 'note', 'chat'].includes(item.kind));
-    if (!hasRecapSources && trigger === 'raid') {
+    const hasContent = hasRecapSources(items);
+    if (!hasContent && trigger === 'raid') {
       welcomeOnly = true;
       headline = `Welcome, raiders from ${triggerInfo.name}`;
       bullets = [{ text: 'The stream just got started, nothing to catch up on yet', sources: [] }];
       engine = 'fallback';
       provenance = recapResult.provenance;
-    } else if (!hasRecapSources || !bullets.length) {
+    } else if (!hasContent && trigger === 'ad-break') {
+      recordDroppedAdBreak({ simulated, provenance });
+      return null;
+    } else if (!hasContent || !bullets.length) {
       return null;
     }
     if (pending) {
@@ -136,6 +143,17 @@ export function createCardPipeline({
     emitter.emit('pending', publicCard(card));
     publishState();
     return publicCard(card);
+  }
+
+  function recordDroppedAdBreak({ simulated, provenance }) {
+    const headline = 'Ad break: nothing new to recap';
+    log(headline);
+    addLog({
+      id: randomUUID(), channel, trigger: 'ad-break', triggerInfo: { name: 'Ad break' },
+      simulated, headline, bullets: [], welcomeOnly: false, sourceDetails: [], provenance,
+      engine: 'fallback', latencyMs: 0, droppedBullets: [], overlayEligible: false,
+      status: 'Dropped', createdAt: now()
+    });
   }
 
   async function approve(cardId = pending?.id, automatic = false) {
@@ -268,15 +286,16 @@ export function createCardPipeline({
     const durationSeconds = Number(event.duration_seconds);
     const end = start + durationSeconds * 1000;
     const delay = Math.max(0, (end - now()) * timeScale);
-    const timer = setTimer(() => {
+    setTimer(() => {
       void buildCard({
         trigger: 'ad-break', event, simulated,
         from: start - 180_000,
+        fallbackFrom: start - 10 * 60_000,
         to: end,
         triggerInfo: { seconds: durationSeconds, name: 'Ad break' }
       });
     }, delay);
-    const result = { payload: event, scheduledAt: end, timer };
+    const result = { payload: event, scheduledAt: end };
     emitter.emit('ad-break:scheduled', result);
     return result;
   }
@@ -297,7 +316,11 @@ export function createCardPipeline({
   }
 
   async function backFromBreak({ simulated = breakSimulated || mode === 'demo' } = {}) {
-    if (breakStartedAt === null) throw new Error('A break has not been started.');
+    if (breakStartedAt === null) {
+      const error = new Error('A break has not been started.');
+      error.statusCode = 400;
+      throw error;
+    }
     const startedAt = breakStartedAt;
     breakStartedAt = null;
     breakSimulated = false;
@@ -426,4 +449,8 @@ export function createCardPipeline({
 
 function isBotOutput(text) {
   return /^\s*(?:@\S+\s+)?Previously(?:\s+on| On check)?\s*:/i.test(String(text ?? ''));
+}
+
+function hasRecapSources(items) {
+  return items.some(item => ['voice', 'note', 'chat'].includes(item.kind));
 }

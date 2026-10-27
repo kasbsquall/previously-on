@@ -94,7 +94,9 @@ async function handlePost(request, response, pathname, pipeline) {
   try {
     body = await readJSON(request);
   } catch (error) {
-    return sendJSON(response, error.statusCode ?? 400, { error: error.message });
+    if (error.statusCode) return sendJSON(response, error.statusCode, { error: error.message });
+    console.error('Request body read failed:', error);
+    return sendJSON(response, 500, { error: 'Something went wrong. Check the terminal for details.' });
   }
   try {
     let result;
@@ -117,7 +119,11 @@ async function handlePost(request, response, pathname, pipeline) {
     }
     return sendJSON(response, 200, { ok: true, result });
   } catch (error) {
-    return sendJSON(response, error.statusCode ?? 400, { error: error.message });
+    if (error.statusCode >= 400 && error.statusCode < 500) {
+      return sendJSON(response, error.statusCode, { error: error.message });
+    }
+    console.error('Request failed:', error);
+    return sendJSON(response, 500, { error: 'Something went wrong. Check the terminal for details.' });
   }
 }
 
@@ -126,7 +132,7 @@ async function simulate(body, pipeline) {
     case 'raid': return pipeline.simulateRaid();
     case 'catchup': return pipeline.simulateCatchup();
     case 'ad-break': return pipeline.simulateAdBreak();
-    default: throw new Error('Simulation type must be raid, catchup, or ad-break.');
+    default: throw requestError('Simulation type must be raid, catchup, or ad-break.');
   }
 }
 
@@ -135,24 +141,28 @@ async function readJSON(request) {
   for await (const chunk of request) {
     value += chunk;
     if (value.length > 16_384) {
-      const error = new Error('Request body is too large.');
-      error.statusCode = 413;
-      throw error;
+      throw requestError('Request body is too large.', 413);
     }
   }
   try { return value ? JSON.parse(value) : {}; }
-  catch { throw new Error('Request body must be valid JSON.'); }
+  catch { throw requestError('Request body must be valid JSON.'); }
 }
 
 function validText(value, max) {
-  if (typeof value !== 'string' || !value.trim() || [...value].length > max) throw new Error(`Text must be between 1 and ${max} characters.`);
+  if (typeof value !== 'string' || !value.trim() || [...value].length > max) throw requestError(`Text must be between 1 and ${max} characters.`);
   return value.trim();
 }
 
 function validNote(value) {
   const text = validText(value, 240);
-  if (/[\r\n]/.test(text)) throw new Error('A note must be one line.');
+  if (/[\r\n]/.test(text)) throw requestError('A note must be one line.');
   return text;
+}
+
+function requestError(message, statusCode = 400) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
 }
 
 async function servePublicFile(response, pathname) {

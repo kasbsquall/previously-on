@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { EventEmitter } from 'node:events';
 import { readFile } from 'node:fs/promises';
-import { formatSSE, isAllowedOrigin } from '../src/server.js';
+import { createServer, formatSSE, isAllowedOrigin } from '../src/server.js';
 
 test('SSE frames carry event data as JSON and escape HTML delimiters', () => {
   const script = '<script>alert(1)</script>';
@@ -17,6 +18,60 @@ test('POST origin check allows only the bound local origin', () => {
   assert.equal(isAllowedOrigin('http://localhost:4777', 4777), false);
   assert.equal(isAllowedOrigin('https://example.com', 4777), false);
   assert.equal(isAllowedOrigin(undefined, 4777), false);
+});
+
+test('/api/simulate ad-break returns serializable JSON with no timer handle', async t => {
+  const pipeline = new EventEmitter();
+  pipeline.getState = () => ({ mode: 'demo', cards: [] });
+  pipeline.simulateAdBreak = () => ({ payload: { duration_seconds: 60 }, scheduledAt: 123456 });
+  const server = createServer({ pipeline, port: 0, mode: 'demo' });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const response = await fetch(`${origin}/api/simulate`, {
+    method: 'POST',
+    headers: { origin, 'content-type': 'application/json' },
+    body: JSON.stringify({ type: 'ad-break' })
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    ok: true,
+    result: { payload: { duration_seconds: 60 }, scheduledAt: 123456 }
+  });
+  const invalid = await fetch(`${origin}/api/simulate`, {
+    method: 'POST',
+    headers: { origin, 'content-type': 'application/json' },
+    body: JSON.stringify({ type: 'unknown' })
+  });
+  assert.equal(invalid.status, 400);
+  assert.deepEqual(await invalid.json(), { error: 'Simulation type must be raid, catchup, or ad-break.' });
+});
+
+test('unexpected POST errors are logged and returned as a plain message', async t => {
+  const pipeline = new EventEmitter();
+  pipeline.getState = () => ({ mode: 'demo', cards: [] });
+  pipeline.simulateAdBreak = () => { throw new Error('internal detail should stay in the terminal'); };
+  const server = createServer({ pipeline, port: 0, mode: 'demo' });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const originalError = console.error;
+  const logged = [];
+  console.error = (...args) => logged.push(args);
+  try {
+    const response = await fetch(`${origin}/api/simulate`, {
+      method: 'POST',
+      headers: { origin, 'content-type': 'application/json' },
+      body: JSON.stringify({ type: 'ad-break' })
+    });
+    assert.equal(response.status, 500);
+    const data = await response.json();
+    assert.equal(data.error, 'Something went wrong. Check the terminal for details.');
+    assert.equal(JSON.stringify(data).includes('internal detail'), false);
+    assert.match(String(logged[0]?.[1]), /internal detail should stay in the terminal/);
+  } finally {
+    console.error = originalError;
+  }
 });
 
 test('overlay renderer uses textContent and does not insert card data as HTML', async () => {
