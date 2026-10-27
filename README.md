@@ -13,6 +13,7 @@ Video: coming soon.
 - It starts on EventSub `channel.ad_break.begin` for affiliates and partners, or when the streamer switches to their BRB scene in OBS on any channel. The streamer reviews the card during the break; nothing airs unread unless they choose a timer.
 - It plays on stream for everyone, so viewers install nothing.
 - Every recap line cites stream moments; the streamer can approve, veto or hold each card.
+- It works inside the live stream. Twitch's Recaps Feed, announced in September 2026, turns a streamer's Clips into recaps for a feed; Previously On airs its recap on the overlay and in chat at the moment a viewer comes back.
 
 ## Proof
 
