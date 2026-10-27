@@ -14,7 +14,7 @@ Every line of product code in this repository was written by OpenAI Codex in tha
 
 At runtime, the recaps come from the OpenAI Responses API. The hackathon rules ask for Codex to build the project. They do not restrict which model the product calls.
 
-## The thirteen prompts
+## The fourteen prompts
 
 The prompt records are in [`docs/codex-prompts/`](docs/codex-prompts/). Each one started with what the review of the previous block found.
 
@@ -32,7 +32,8 @@ The prompt records are in [`docs/codex-prompts/`](docs/codex-prompts/). Each one
 | 10 | [Ad break fixes](docs/codex-prompts/10-ad-break-fixes.md) | Serializable ad-break result, plain panel errors, demo replay on the live clock, ad-break window that widens to 10 minutes, a log line when a card is dropped | Checked in the browser: all four triggers produce a card in the demo |
 | 11 | [Show and clips](docs/codex-prompts/11-show-and-clips.md) | TV-style cold open, CC0 sound effects, OpenAI narrator voice with cache, voice and sound settings, Twitch clip and stream marker receipts for real raids and ad breaks | In the browser the cold open looked like a small toast and used a colored left border; the first demo raid card fell back to the generic headline |
 | 12 | [Judge demo and README](docs/codex-prompts/12-judge-demo-and-readme.md), then [12b](docs/codex-prompts/12b-record-demo-fix.md) and [12c](docs/codex-prompts/12c-judge-page-polish.md) | Lower-third cold open, voice generated in the background, demo preload, recorded browser demo for GitHub Pages with visible sources, Pages workflow, README rewritten for judges. 12b fixed the recording script after a real run failed; 12c made the judge page start with a card and say what the product is || A second blind review asked that nothing airs unread, and that the ad break be shown in action |
-| 13 | [Review during ads](docs/codex-prompts/13-review-during-ads.md) | Ad-break card built when the break starts and reviewed while the ads run, airs when the break ends; judge page sources hidden until asked; README "Why" line | |
+| 13 | [Review during ads](docs/codex-prompts/13-review-during-ads.md) | Ad-break card built when the break starts and reviewed while the ads run, airs when the break ends; judge page sources hidden until asked; README "Why" line | Kevin's test channel is not an affiliate, so the ad break could not be shown live |
+| 14 | [OBS BRB trigger](docs/codex-prompts/14-obs-brb.md), then [14b](docs/codex-prompts/14b-obs-scene-events.md) | obs-websocket 5.x client with SHA-256 auth and reconnect, switching to the BRB scene starts a break and leaving it airs the card, OBS row and break scene picker in the panel, `npm run check-obs`, a fourth recorded card on the judge page. 14b: the real OBS 32.1.2 never sent `CurrentProgramSceneChanged`, so the client now follows scene transitions and polls the program scene | Checked live with OBS and Twitch: the card was built when the scene switched to BRB and aired when it switched back |
 
 ## Commits
 

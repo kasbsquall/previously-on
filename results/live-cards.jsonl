@@ -1,0 +1,1 @@
+{"at":"2026-10-27T23:08:56.947Z","mode":"real","trigger":"brb","simulated":false,"engine":"model","latencyMs":1819,"bullets":[{"sources":["S1","S3"]},{"sources":["S2","S4"]}],"droppedBullets":[],"status":"Shown"}

@@ -1,6 +1,6 @@
 # Verification on real Twitch
 
-What was tested against live Twitch and OBS, what broke, and what is still untested. Tests ran on 2026-10-25 and 2026-10-26 (UTC) with two test accounts: `artemita95` (the streamer running Previously On) and `artemander95` (a viewer and the raiding channel).
+What was tested against live Twitch and OBS, what broke, and what is still untested. Tests ran from 2026-10-25 to 2026-10-27 (UTC) with two test accounts: `artemita95` (the streamer running Previously On) and `artemander95` (a viewer and the raiding channel).
 
 ## Tested live
 
@@ -12,6 +12,8 @@ What was tested against live Twitch and OBS, what broke, and what is still untes
 | Overlay in OBS 32.1.2 (browser source, 1920x1080) | The ticket appeared bottom-left over the scene during a real `!catchup`. | Screenshot from the streamer's OBS preview |
 | Real raid, `artemander95` to `artemita95` | `channel.raid` arrived and a card went on air. It was empty, because nothing else had happened in the 10-minute window. The test also exposed an EventSub reconnect loop on quiet channels. | Fixed in prompt 6 |
 | Quiet-channel connection after the fix | 3 minutes with no chat: the same three subscriptions stayed enabled and no reconnect was logged. | Prompt 6 review |
+| OBS BRB trigger, first try (OBS 32.1.2, obs-websocket 5.7.3) | `npm run check-obs` connected with the password and listed the scenes, but switching to the BRB scene did nothing: this OBS never sent `CurrentProgramSceneChanged`, only the scene transition events. | Fixed in prompt 14b |
+| OBS BRB trigger after the fix | Two labeled test notes, then the scene switched to BRB: a card built by the model went to the panel at once ("The greenhouse roof was finished and planting began", 1,819 ms). Switching back to the main scene aired it with the cold open and the "Back from BRB" stub; the narrator voice (11.6 s) was ready before it aired. | `results/live-cards.jsonl`, 2026-10-27 23:08 UTC |
 
 Twitch's own raid settings blocked the first attempts: the receiving channel required a 30-day-old account and a followed channel. A streamer trying this with a brand-new test account will hit the same wall.
 
