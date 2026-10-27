@@ -9,13 +9,14 @@ export async function buildRecap({ trigger, items, channel, windowMinutes, model
     id: `S${index + 1}`,
     ...(item.kind === 'chat' ? { text: item.text.slice(0, 200) } : {})
   }));
+  const contentItems = items.filter(item => ['voice', 'note', 'chat'].includes(item.kind));
   const started = performance.now();
   let candidate;
   let engine = 'model';
   const droppedBullets = [];
-  if (process.env.OPENAI_API_KEY || model !== generateRecap || modelOptions.client) {
+  if (contentItems.length && (process.env.OPENAI_API_KEY || model !== generateRecap || modelOptions.client)) {
     try {
-      candidate = await model({ ...modelOptions, items, channel, trigger });
+      candidate = await model({ ...modelOptions, items: contentItems, channel, trigger });
     } catch {
       candidate = undefined;
     }
@@ -23,13 +24,13 @@ export async function buildRecap({ trigger, items, channel, windowMinutes, model
 
   let checked = { bullets: [], dropped: [] };
   if (candidate) {
-    checked = groundBullets(candidate.bullets, items, blockedTerms);
+    checked = groundBullets(candidate.bullets, contentItems, blockedTerms);
     droppedBullets.push(...checked.dropped);
   }
   if (!candidate || checked.bullets.length === 0) {
     engine = 'fallback';
-    candidate = buildFallback({ items, channel, windowMinutes: windowMinutes ?? ({ raid: 10, catchup: 5, break: 10, 'ad-break': 4 }[trigger] ?? 10) });
-    checked = groundBullets(candidate.bullets, items, blockedTerms);
+    candidate = buildFallback({ items: contentItems, channel, windowMinutes: windowMinutes ?? ({ raid: 10, catchup: 5, break: 10, 'ad-break': 4 }[trigger] ?? 10) });
+    checked = groundBullets(candidate.bullets, contentItems, blockedTerms);
     droppedBullets.push(...checked.dropped);
   }
 
@@ -51,7 +52,7 @@ export async function buildRecap({ trigger, items, channel, windowMinutes, model
 }
 
 function cleanHeadline(headline) {
-  return String(headline ?? '').replace(/^\s*previously(?:\s+on)?\s*:\s*/i, '').trim();
+  return String(headline ?? '').replace(/^\s*previously(?:\s+on)?\s*:\s*/i, '').trim().replace(/\.$/u, '');
 }
 
 function timeOf(value) {

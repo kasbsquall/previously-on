@@ -207,18 +207,30 @@ function renderPending() {
   const countdownLabel = document.createElement('span');
   countdownLabel.className = 'countdown-label';
   const heldForApproval = card.approvalMode === 'hold';
-  countdownLabel.textContent = heldForApproval ? 'Hold until I approve' : 'Auto-approves in';
+  countdownLabel.textContent = heldForApproval ? 'Waiting for approval' : 'Auto-approves in';
   const countdown = document.createElement('b');
   countdown.className = 'countdown';
   countdown.textContent = String(Math.ceil((card.remainingMs ?? (card.approvalSeconds ?? 5) * 1000) / 1000));
-  countdown.hidden = heldForApproval;
-  const meter = document.createElement('span');
-  meter.className = 'meter';
-  meter.hidden = heldForApproval;
-  const meterFill = document.createElement('span');
-  meterFill.className = 'meter-fill';
-  meter.append(meterFill);
-  stub.append(countdownLabel, countdown, meter);
+  if (heldForApproval) {
+    const hold = document.createElement('div');
+    hold.className = 'hold-display';
+    const hourglass = document.createElement('i');
+    hourglass.className = 'ph-light ph-hourglass-medium';
+    hourglass.setAttribute('aria-hidden', 'true');
+    const holdLabel = document.createElement('b');
+    holdLabel.className = 'countdown hold-value';
+    holdLabel.textContent = 'Hold';
+    hold.append(hourglass, holdLabel);
+    stub.classList.add('is-held');
+    stub.append(countdownLabel, hold);
+  } else {
+    const meter = document.createElement('span');
+    meter.className = 'meter';
+    const meterFill = document.createElement('span');
+    meterFill.className = 'meter-fill';
+    meter.append(meterFill);
+    stub.append(countdownLabel, countdown, meter);
+  }
   mini.append(coupon, stub);
 
   const actions = document.createElement('div');

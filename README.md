@@ -38,7 +38,7 @@ Open the overlay at [http://127.0.0.1:4777/overlay](http://127.0.0.1:4777/overla
 | Back from break | Control panel action; Helix `POST /helix/chat/messages` for the recap line | Recap ticket and chat line |
 | Raid | EventSub `channel.raid`; Helix `POST /helix/chat/messages` for the welcome line | Welcome ticket and chat line for the raiding channel |
 
-The recap selects recent chat, voice transcripts, EventSub events and streamer notes. The OpenAI Responses API returns structured output. A grounding check drops bullets that cite unknown sources or contain blocked terms. Refused, incomplete, timed-out or ungrounded model output uses the deterministic fallback.
+The recap selects recent chat, voice transcripts and streamer notes as content; EventSub events remain in the buffer for provenance counts only. The OpenAI Responses API returns structured output. A grounding check drops bullets that cite unknown sources or contain blocked terms. Refused, incomplete, timed-out or ungrounded model output uses the deterministic fallback.
 
 The control panel offers auto-approval after 5, 10 or 20 seconds, or **Hold until I approve**. When an auto-approval timer runs out, the card is approved, shown on stream and sent to chat. Hold mode never approves or posts automatically; the streamer must approve the card.
 

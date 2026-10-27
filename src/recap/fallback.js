@@ -4,7 +4,7 @@ const INSTRUCTION_LIKE_CHAT = /^\s*(ignore|disregard|forget)\s+(all\s+)?(previou
 export function buildFallback({ items, channel, windowMinutes = 10 }) {
   const bullets = [];
   const mostRecent = kind => [...items].reverse().find(item => item.kind === kind);
-  for (const item of [mostRecent('event'), mostRecent('voice'), pickMostRepetitiveChat(items)]) {
+  for (const item of [mostRecent('voice'), mostRecent('note'), pickMostRepetitiveChat(items)]) {
     if (!item || bullets.some(bullet => bullet.sources.includes(item.id))) continue;
     bullets.push({ text: capitalize(truncate(item.text, 90)), sources: [item.id] });
   }

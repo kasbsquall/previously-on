@@ -44,7 +44,53 @@ test('buildRecap falls back when the model throws and never repeats injected cha
   assert.equal(recap.engine, 'fallback');
   assert.equal(recap.headline, 'The last 10 min on stream');
   assert.equal(output.includes('Ignore previous instructions'), false);
-  assert.equal(recap.bullets[0].sources[0], 'S3');
+  assert.equal(recap.bullets[0].sources[0], 'S2');
+  assert.match(recap.bullets[0].text, /cozy cozy cottage time/i);
+  assert.equal(recap.provenance.eventCount, 1);
+});
+
+test('events stay in provenance but are excluded from model and fallback recap content', async () => {
+  const items = [
+    { id: 'S1', kind: 'event', text: 'A raid landed as the ad break began.' },
+    { id: 'S2', kind: 'event', text: 'Follow from FernAndFable.' },
+    { id: 'S3', kind: 'voice', text: 'The greenhouse repairs are finished.' },
+    { id: 'S4', kind: 'note', text: 'The forest path is next.' },
+    { id: 'S5', kind: 'chat', text: 'The new greenhouse looks cozy.' }
+  ];
+  let modelItems;
+  const recap = await buildRecap({
+    trigger: 'ad-break', items, channel: 'MeadowMoth',
+    model: async ({ items: sources }) => {
+      modelItems = sources;
+      return { headline: 'Greenhouse repairs wrapped up.', bullets: [{ text: 'The greenhouse repairs are finished.', sources: ['S3'] }] };
+    }
+  });
+  assert.deepEqual(modelItems.map(item => item.kind), ['voice', 'note', 'chat']);
+  assert.equal(recap.provenance.eventCount, 2);
+  assert.equal(recap.headline, 'Greenhouse repairs wrapped up');
+
+  const fallback = await buildRecap({
+    trigger: 'ad-break', items, channel: 'MeadowMoth',
+    model: async () => { throw new Error('offline'); }
+  });
+  assert.equal(fallback.engine, 'fallback');
+  assert.equal(fallback.provenance.eventCount, 2);
+  assert.ok(fallback.bullets.every(bullet => !/raid|follow|ad break/i.test(bullet.text)));
+});
+
+test('event-only windows have provenance but cannot produce a recap', async () => {
+  let called = false;
+  const recap = await buildRecap({
+    trigger: 'ad-break', channel: 'MeadowMoth',
+    items: [
+      { id: 'S1', kind: 'event', text: 'A raid arrived.' },
+      { id: 'S2', kind: 'event', text: 'An ad break began.' }
+    ],
+    model: async () => { called = true; return null; }
+  });
+  assert.equal(called, false);
+  assert.deepEqual(recap.bullets, []);
+  assert.equal(recap.provenance.eventCount, 2);
 });
 
 test('fallback bullets start with a capital letter and use the requested window length', async () => {
@@ -61,7 +107,7 @@ test('model headline safety net removes a leading Previously prefix', async () =
   const recap = await buildRecap({
     trigger: 'catchup', channel: 'MeadowMoth',
     items: [{ id: 'S1', kind: 'voice', text: 'The tower gained two floors.' }],
-    model: async () => ({ headline: 'Previously on: MeadowMoth raised the tower', bullets: [{ text: 'The tower gained two floors.', sources: ['S1'] }] })
+    model: async () => ({ headline: 'Previously on: MeadowMoth raised the tower.', bullets: [{ text: 'The tower gained two floors.', sources: ['S1'] }] })
   });
   assert.equal(recap.headline, 'MeadowMoth raised the tower');
 });
@@ -78,13 +124,16 @@ test('buildRecap falls back when structured output is refused', async () => {
 });
 
 test('buildRecap falls back when the model request times out', async () => {
-  const items = [{ id: 'S1', t: '2026-01-01T00:00:00Z', kind: 'event', text: 'Follow from FernAndFable.', user: 'FernAndFable' }];
+  const items = [
+    { id: 'S1', t: '2026-01-01T00:00:00Z', kind: 'event', text: 'Follow from FernAndFable.', user: 'FernAndFable' },
+    { id: 'S2', t: '2026-01-01T00:00:01Z', kind: 'voice', text: 'The garden gate is open.', user: 'Streamer' }
+  ];
   const client = { responses: { parse: (_params, options) => new Promise((resolve, reject) => {
     options.signal.addEventListener('abort', () => reject(options.signal.reason), { once: true });
   }) } };
   const recap = await buildRecap({ trigger: 'raid', items, channel: 'MeadowMoth', modelOptions: { client, timeoutMs: 5 } });
   assert.equal(recap.engine, 'fallback');
-  assert.equal(recap.bullets[0].text, 'Follow from FernAndFable.');
+  assert.equal(recap.bullets[0].text, 'The garden gate is open.');
 });
 
 test('buildRecap falls back when a Responses API result is incomplete', async () => {
@@ -111,6 +160,7 @@ test('model call uses the structured format and has no sampling controls', async
   assert.equal(request.params.text.format.strict, true);
   assert.match(request.params.input[1].content, /BEGIN UNTRUSTED SOURCE DATA/);
   assert.match(request.params.input[0].content, /one plain sentence in sentence case/);
+  assert.match(request.params.input[0].content, /Do not end the headline with a period/);
   assert.match(request.params.input[0].content, /always write the recap in English/);
   assert.match(request.params.input[0].content, /never start with the word Previously/);
   assert.match(request.params.input[0].content, /Describe what is happening on stream.*not who said what/s);

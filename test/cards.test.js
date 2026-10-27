@@ -86,22 +86,23 @@ test('approval broadcasts a card and sends one recap chat line', async () => {
   assert.match(sent[0].line, /^Previously on: Welcome raiders from CozyCampfire\./);
 });
 
-test('raid recap excludes the event that fired the trigger', async () => {
+test('raid trigger event remains available for provenance while its recap content is filtered', async () => {
   const captured = [];
   const { pipeline, stored } = makeHarness({ recap: async ({ items }) => {
     captured.push(...items);
     return {
       headline: 'A cozy stream.',
-      bullets: items.length ? [{ text: 'A viewer joined.', sources: [items.at(-1).id] }] : [],
-      provenance: { voiceSeconds: 0, chatCount: 0, eventCount: 0, noteCount: 0 },
+      bullets: items.some(item => item.kind === 'note') ? [{ text: 'A viewer joined.', sources: [items.find(item => item.kind === 'note').id] }] : [],
+      provenance: { voiceSeconds: 0, chatCount: 0, eventCount: items.filter(item => item.kind === 'event').length, noteCount: 1 },
       engine: 'fallback', latencyMs: 1
     };
   } });
   await pipeline.addNote('The garden is growing.');
-  await pipeline.handleRaid(raid());
+  const card = await pipeline.handleRaid(raid());
   assert.equal(stored.at(-1).kind, 'event');
-  assert.equal(captured.some(item => item.kind === 'event' && item.text.startsWith('raid from ')), false);
-  assert.equal(captured[0].text, 'The garden is growing.');
+  assert.equal(captured.some(item => item.kind === 'event' && item.text.startsWith('raid from ')), true);
+  assert.equal(captured.find(item => item.kind === 'note').text, 'The garden is growing.');
+  assert.equal(card.provenance.eventCount, 1);
 });
 
 test('demo simulated raid excludes its source id from the model input', async () => {
@@ -134,13 +135,13 @@ test('demo simulated raid excludes its source id from the model input', async ()
   assert.doesNotMatch(submittedPrompts[1], /ad break began for 1 seconds/i);
 });
 
-test('demo simulated raid fallback excludes the trigger event by source id', async () => {
+test('demo simulated raid fallback excludes all event content', async () => {
   let fallbackItems;
   const { pipeline } = makeHarness({
-    recap: async options => {
-      fallbackItems = options.items;
-      return buildRecap({ ...options, model: async () => { throw new Error('model unavailable'); } });
-    }
+    recap: options => buildRecap({ ...options, model: async modelArgs => {
+      fallbackItems = modelArgs.items;
+      throw new Error('model unavailable');
+    } })
   });
   await pipeline.addVoiceSegment('The river is clear.');
   const card = await pipeline.simulateRaid();
@@ -224,7 +225,7 @@ test('catch-up respects per-viewer and global cooldowns silently', async () => {
 });
 
 test('raid with no recap sources shows a welcome ticket and still sends the welcome line', async () => {
-  const { pipeline, stored, sent } = makeHarness();
+  const { pipeline, stored, sent } = makeHarness({ recap: buildRecap });
   const shown = [];
   pipeline.on('card:show', card => shown.push(card));
   const pending = await pipeline.handleRaid(raid());
@@ -233,9 +234,24 @@ test('raid with no recap sources shows a welcome ticket and still sends the welc
   assert.equal(pending.headline, 'Welcome, raiders from CozyCampfire');
   assert.deepEqual(pending.bullets, [{ text: 'The stream just got started, nothing to catch up on yet', sources: [] }]);
   assert.equal(pending.provenance.chatCount, 0);
+  assert.equal(pending.provenance.eventCount, 1);
   assert.equal(await pipeline.approve(pending.id), true);
   assert.equal(shown[0].bullets.length, 1);
   assert.equal(sent[0].line, 'Previously on: Welcome raiders from CozyCampfire. The stream just got started, nothing to catch up on yet.');
+});
+
+test('an ad break with only event sources does not create a pending recap card', async () => {
+  const { pipeline, clock } = makeHarness({ recap: buildRecap });
+  const result = await pipeline.handleAdBreak({
+    duration_seconds: 1,
+    started_at: new Date(start).toISOString(),
+    requester_user_name: 'MeadowMoth'
+  }, { timeScale: 0 });
+  await clock.advance(0);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(result.payload.duration_seconds, 1);
+  assert.equal(pipeline.getState().pending, null);
+  assert.equal(pipeline.getState().cards.length, 0);
 });
 
 test('approved catch-up replies to the triggering chat message', async () => {

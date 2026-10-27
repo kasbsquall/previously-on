@@ -72,14 +72,13 @@ export function createCardPipeline({
     Promise.resolve(onDecided(card, mode)).catch(error => emitter.emit('log:error', error));
   }
 
-  async function buildCard({ trigger, event, simulated = false, from, to, overlayEligible = true, triggerInfo = {}, excludedSourceIds = [] }) {
+  async function buildCard({ trigger, event, simulated = false, from, to, overlayEligible = true, triggerInfo = {} }) {
     const sequence = ++latestTriggerSequence;
     const end = to ?? now();
     const start = from ?? end - (trigger === 'raid' ? 10 : trigger === 'catchup' ? 5 : 10) * 60_000;
     const windowMinutes = trigger === 'catchup' ? 5 : trigger === 'ad-break' ? 4 : 10;
     const selected = await sourceBuffer.window({ from: start, to: end, max: 120 });
-    const items = selected.filter(item => !excludedSourceIds.includes(item.sourceId ?? item.id))
-      .map((item, index) => ({ ...item, id: `S${index + 1}` }));
+    const items = selected.map((item, index) => ({ ...item, id: `S${index + 1}` }));
     const recapResult = await recap({ trigger, items, channel, windowMinutes });
     if (sequence !== latestTriggerSequence) return null;
     let headline = recapResult.headline;
@@ -87,13 +86,14 @@ export function createCardPipeline({
     let engine = recapResult.engine;
     let provenance = recapResult.provenance;
     let welcomeOnly = false;
-    if (!bullets.length && trigger === 'raid' && items.length === 0) {
+    const hasRecapSources = items.some(item => ['voice', 'note', 'chat'].includes(item.kind));
+    if (!hasRecapSources && trigger === 'raid') {
       welcomeOnly = true;
       headline = `Welcome, raiders from ${triggerInfo.name}`;
       bullets = [{ text: 'The stream just got started, nothing to catch up on yet', sources: [] }];
       engine = 'fallback';
-      provenance = { voiceSeconds: 0, chatCount: 0, eventCount: 0, noteCount: 0 };
-    } else if (!bullets.length) {
+      provenance = recapResult.provenance;
+    } else if (!hasRecapSources || !bullets.length) {
       return null;
     }
     if (pending) {
@@ -218,11 +218,10 @@ export function createCardPipeline({
     const raider = event.from_broadcaster_user_name;
     const raidText = `raid from ${raider} with ${event.viewers} viewers`;
     const eventTime = new Date(now()).toISOString();
-    const triggerSource = await sourceBuffer.add({ t: eventTime, twitchTime: event.started_at, kind: 'event', text: raidText, user: raider });
+    await sourceBuffer.add({ t: eventTime, twitchTime: event.started_at, kind: 'event', text: raidText, user: raider });
     return buildCard({
       trigger: 'raid', event, simulated,
-      triggerInfo: { name: raider, viewerCount: event.viewers },
-      excludedSourceIds: [triggerSource.id]
+      triggerInfo: { name: raider, viewerCount: event.viewers }
     });
   }
 
@@ -258,7 +257,7 @@ export function createCardPipeline({
     const eventText = `ad break began for ${event.duration_seconds} seconds`;
     const receivedAt = now();
     const receivedTime = new Date(receivedAt).toISOString();
-    const triggerSource = await sourceBuffer.add({
+    await sourceBuffer.add({
       t: receivedTime,
       twitchTime: event.started_at,
       kind: 'event',
@@ -274,7 +273,6 @@ export function createCardPipeline({
         trigger: 'ad-break', event, simulated,
         from: start - 180_000,
         to: end,
-        excludedSourceIds: [triggerSource.id],
         triggerInfo: { seconds: durationSeconds, name: 'Ad break' }
       });
     }, delay);

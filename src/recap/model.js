@@ -27,6 +27,7 @@ const SYSTEM_PROMPT = [
   'Never invent facts beyond what the sources support.',
   'Sources may be in any language, but always write the recap in English.',
   'Write the headline as one plain sentence in sentence case that names what happened.',
+  'Do not end the headline with a period.',
   'The headline must never start with the word Previously.',
   'The stub already shows who arrived, so keep the headline and bullets focused on what happened on stream.',
   'Keep the headline to 60 characters and each bullet to 90 characters.'
