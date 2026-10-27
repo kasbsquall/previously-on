@@ -5,9 +5,10 @@ import { WebSocket } from 'ws';
 const CARD_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MODEL = 'gpt-realtime-2.1-mini';
 const SAMPLE_RATE = 24_000;
+export const NARRATOR_TIMEOUT_MS = 20_000;
 // Model catalog: https://developers.openai.com/api/docs/models/gpt-realtime-2.1-mini; audio session: https://developers.openai.com/api/docs/guides/realtime-conversations.
 
-export function createNarrator({ apiKey = process.env.OPENAI_API_KEY, audioDirectory = '.data/audio', WebSocketImpl = WebSocket, timeoutMs = 6000, setTimer = setTimeout, clearTimer = clearTimeout } = {}) {
+export function createNarrator({ apiKey = process.env.OPENAI_API_KEY, audioDirectory = '.data/audio', WebSocketImpl = WebSocket, timeoutMs = NARRATOR_TIMEOUT_MS, setTimer = setTimeout, clearTimer = clearTimeout } = {}) {
   const root = resolve(audioDirectory);
   function audioPathFor(cardId) {
     if (!CARD_ID.test(String(cardId))) return null;

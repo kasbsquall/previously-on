@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#25335f">
+  <title>Previously On | Recorded demo</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="fonts.css">
+  <link rel="stylesheet" href="assets/phosphor-light.css">
+  <link rel="stylesheet" href="demo.css">
+  <script type="module" src="replay-adapter.js"></script>
+</head>
+<body>
+  <main class="page">
+    <header class="masthead">
+      <p class="eyebrow">Recorded demo</p>
+      <h1>Previously On</h1>
+      <p class="intro">When viewers come back from an ad break, or join mid-stream, a 15-second recap plays on stream. These three cards were recorded from a real run.</p>
+    </header>
+    <section class="stage-shell" aria-label="Recorded overlay demo">
+      <div class="stage" id="stage">
+        <iframe id="overlay-frame" src="overlay.html?replay=1" title="Previously On recap overlay" allow="autoplay"></iframe>
+      </div>
+    </section>
+    <section class="controls" aria-label="Recorded recap moments">
+      <div class="moment-buttons">
+        <button type="button" data-trigger="ad-break" disabled>Ad break ends</button>
+        <button type="button" data-trigger="raid" disabled>Raid arrives</button>
+        <button type="button" data-trigger="catchup" disabled>A viewer types !catchup</button>
+      </div>
+      <div class="options">
+        <label><input id="sources-toggle" type="checkbox"> Show sources</label>
+        <label><input id="sound-toggle" type="checkbox" checked> Sound effects on</label>
+      </div>
+      <p class="status" id="recording-status" role="status">Loading recorded cards.</p>
+      <div class="source-lines" id="source-lines" hidden></div>
+    </section>
+    <p class="recording-note">Recorded from a real run of <code>npm run demo</code> with gpt-5.4-mini on 2026-10-27. Run it live with <code>npm run demo</code>.</p>
+    <footer>Previously On for Twitch streams</footer>
+  </main>
+</body>
+</html>

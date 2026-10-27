@@ -18,10 +18,14 @@ html, body { width: 1920px; height: 1080px; margin: 0; overflow: hidden; backgro
 body { position: relative; }
 [hidden] { display: none !important; }
 .demo-tag { position: fixed; z-index: 5; top: 24px; right: 24px; padding: 6px 10px; border-radius: 4px; color: var(--paper); background: var(--navy); font-size: 13px; font-weight: 700; letter-spacing: .09em; }
-.cold-open { position: fixed; left: 48px; bottom: 48px; z-index: 4; width: 452px; height: 148px; padding: 27px 30px; display: flex; flex-direction: column; justify-content: center; gap: 8px; border-radius: 6px; border-left: 12px solid var(--navy); color: var(--ink); background: var(--paper) var(--grain); box-shadow: 0 14px 18px oklch(24% .05 60 / .38), inset 0 0 0 1px var(--rule); }
-.cold-open span { color: var(--navy); font-size: 16px; font-weight: 800; letter-spacing: .14em; }
-.cold-open b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 34px; line-height: 1; }
-.cold-open.play { animation: coldOpen 1200ms var(--ease) both; }
+.cold-open { position: fixed; left: 48px; bottom: 48px; z-index: 4; width: min(1100px, calc(100vw - 96px)); height: 220px; padding: 23px 44px 25px 34px; display: flex; flex-direction: column; justify-content: center; gap: 12px; overflow: hidden; transform-origin: left center; color: var(--paper); background: var(--navy) var(--grain); box-shadow: 0 14px 18px oklch(24% .05 60 / .38), inset 0 0 0 1px color-mix(in oklab, var(--paper) 26%, transparent); }
+.cold-label { position: relative; z-index: 1; font-size: 22px; line-height: 1; font-weight: 800; letter-spacing: .18em; }
+.cold-channel { position: relative; z-index: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 120px; line-height: .9; font-weight: 800; letter-spacing: -.035em; }
+.cold-perforation { position: absolute; inset: 0 0 0 auto; z-index: 2; width: 12px; background: radial-gradient(circle, var(--perf) 1.6px, transparent 2px) center 0/8px 11px repeat-y; }
+.cold-open.play { animation: coldBandIn 240ms var(--ease) both; }
+.cold-open.play .cold-label { animation: coldTextIn 180ms var(--ease) 240ms both; }
+.cold-open.play .cold-channel { animation: coldTextIn 180ms var(--ease) 300ms both; }
+.cold-open.leave { animation: coldBandOut 200ms var(--ease) both; }
 .ticket { position: fixed; left: 48px; bottom: 48px; width: 640px; max-width: 640px; max-height: 380px; filter: drop-shadow(0 14px 18px oklch(24% .05 60 / .38)) drop-shadow(0 2px 3px oklch(24% .05 60 / .3)); }
 .ticket-inner { display: flex; align-items: stretch; position: relative; max-height: 380px; }
 .coupon, .stub { position: relative; background: var(--paper) var(--grain); }
@@ -77,5 +81,7 @@ body { position: relative; }
 @keyframes tearStub { to { transform: translate(70px, 46px) rotate(9deg); opacity: 0; } }
 @keyframes outLeft { to { transform: translateX(-90px); opacity: 0; } }
 @keyframes fadeOut { to { opacity: 0; } }
-@keyframes coldOpen { 0% { transform: translateY(36px); opacity: 0; } 16%, 76% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-12px); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0ms !important; transition-duration: .01ms !important; } .route path { stroke-dashoffset: 0; } }
+@keyframes coldBandIn { from { transform: scaleX(0); opacity: 0; } to { transform: scaleX(1); opacity: 1; } }
+@keyframes coldTextIn { from { transform: translateY(6px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes coldBandOut { from { transform: scaleX(1) translateY(0); opacity: 1; } to { transform: scaleX(1) translateY(28px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0ms !important; transition-duration: .01ms !important; } .route path { stroke-dashoffset: 0; } .cold-open.play, .cold-open.leave { animation: none !important; } }

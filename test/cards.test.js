@@ -87,6 +87,45 @@ test('approval broadcasts a card and sends one recap chat line', async () => {
   assert.match(sent[0].line, /^Previously on: Welcome raiders from CozyCampfire\./);
 });
 
+test('card enters the approval queue while narrator audio generates in the background', async () => {
+  let resolveAudio;
+  const shown = [];
+  const { pipeline, clock } = makeHarness({
+    featureSettings: { get: () => ({ narratorVoice: true, soundEffects: true }), set: async value => value },
+    narrator: { generate: () => new Promise(resolve => { resolveAudio = resolve; }) }
+  });
+  pipeline.on('card:show', card => shown.push(card));
+  const card = await pipeline.handleRaid(raid());
+  assert.equal(card.status, 'Waiting');
+  assert.equal(card.voicePending, true);
+  const approval = pipeline.approve(card.id);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(shown.length, 0);
+  await clock.advance(2999);
+  assert.equal(shown.length, 0);
+  await clock.advance(1);
+  await approval;
+  assert.equal(shown.length, 1);
+  assert.equal(shown[0].audioUrl, undefined);
+  resolveAudio({ audioUrl: '/audio/late', durationMs: 4000 });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(pipeline.getState().onAir.audioUrl, undefined);
+});
+
+test('approval uses narrator audio if it is ready before the three-second limit', async () => {
+  const shown = [];
+  const { pipeline } = makeHarness({
+    featureSettings: { get: () => ({ narratorVoice: true, soundEffects: true }), set: async value => value },
+    narrator: { generate: async () => ({ audioUrl: '/audio/ready', durationMs: 4321 }) }
+  });
+  pipeline.on('card:show', card => shown.push(card));
+  const card = await pipeline.handleRaid(raid());
+  await pipeline.waitForAudio(card.id);
+  await pipeline.approve(card.id);
+  assert.equal(shown[0].audioUrl, '/audio/ready');
+  assert.equal(shown[0].voiceDurationMs, 4321);
+});
+
 test('clip receipt link is added to the approved chat line and card log', async () => {
   const { pipeline, sent } = makeHarness({ clipReceipts: { capture: async () => ({ clipUrl: 'https://clips.twitch.tv/receipt', markerCreated: true }) } });
   const card = await pipeline.handleRaid(raid());

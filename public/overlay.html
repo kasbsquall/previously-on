@@ -4,16 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Previously On Overlay</title>
-  <link rel="stylesheet" href="/fonts.css">
-  <link rel="stylesheet" href="/assets/phosphor-light.css">
-  <link rel="stylesheet" href="/overlay.css">
-  <script src="/overlay.js" defer></script>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="fonts.css">
+  <link rel="stylesheet" href="assets/phosphor-light.css">
+  <link rel="stylesheet" href="overlay.css">
+  <script src="overlay.js" defer></script>
 </head>
 <body>
   <div class="demo-tag" id="demo-tag" hidden>DEMO REPLAY</div>
-  <div class="cold-open" id="cold-open" hidden><span>PREVIOUSLY ON</span><b id="cold-channel"></b></div>
-  <audio id="sting-sound" src="/sfx/sting.ogg" preload="auto"></audio>
-  <audio id="stamp-sound" src="/sfx/stamp.ogg" preload="auto"></audio>
+  <div class="cold-open" id="cold-open" aria-hidden="true" hidden>
+    <span class="cold-label">PREVIOUSLY ON</span>
+    <b class="cold-channel" id="cold-channel"></b>
+    <span class="cold-perforation" aria-hidden="true"></span>
+  </div>
+  <audio id="sting-sound" src="sfx/sting.ogg" preload="auto"></audio>
+  <audio id="stamp-sound" src="sfx/stamp.ogg" preload="auto"></audio>
   <audio id="narrator-audio" preload="none"></audio>
   <main class="overlay-stage" aria-live="polite" aria-atomic="true">
     <article class="ticket" id="ticket" hidden>

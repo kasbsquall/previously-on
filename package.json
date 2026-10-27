@@ -9,6 +9,8 @@
   "scripts": {
     "start": "node --env-file=.env src/main.js",
     "demo": "node --env-file-if-exists=.env src/demo.js",
+    "record-demo": "node --env-file-if-exists=.env src/record-demo.js",
+    "build:web": "node src/build-web.js",
     "check-twitch": "node --env-file=.env src/check-twitch.js",
     "eval": "node --env-file-if-exists=.env src/eval.js",
     "live-report": "node src/live-report.js",

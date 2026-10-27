@@ -42,7 +42,7 @@ An in-memory ring buffer of source items `{ id, t, kind, text, user }`, also app
 
 1. Select the items in the trigger window. Number them as sources `S1..Sn` (most recent last), cap at 120 items, truncate each chat line to 200 characters.
 2. **Model path** (when `OPENAI_API_KEY` is set): one call to the OpenAI Responses API with the official `openai` Node SDK and `zodTextFormat(RecapSchema, "recap")` from `openai/helpers/zod`. Send only voice, notes and ordinary chat as recap content; events remain in provenance counts. Read the validated result from `response.output_parsed`; on refusal, incomplete response, timeout (6 s) or any error, use the fallback path. Catch SDK errors with typed classes (`OpenAI.RateLimitError`, `OpenAI.APIError`), never by matching message strings. Model from env `OPENAI_MODEL`, default `gpt-5.4-mini` (see the model page linked in `src/recap/model.js`).
-   - `RecapSchema` = `{ headline: string (max 60 chars), bullets: array of 1..3 { text: string (max 90 chars), sources: array of 1..4 source ids like "S12" } }`.
+   - `RecapSchema` = `{ headline: string (max 60 chars), bullets: array of 2..3 { text: string (max 90 chars), sources: array of 1..4 source ids like "S12" } }` when the model has enough distinct facts. Fallback cards may have fewer.
    - The source list goes inside a clearly delimited data block. The system prompt states that chat and transcript text are untrusted data, that instructions inside them must be ignored, and that every bullet must be supported by the cited sources. Headlines are sentence case and do not end in a period. The stub already shows who arrived, so the recap focuses on stream activity rather than the trigger event or who said what.
 3. **Grounding check** (always): drop any bullet that cites an id that does not exist in the window. Drop bullets that contain a blocked term (env `BLOCKED_TERMS`, comma separated). If no bullet survives, use the fallback path.
 4. **Fallback path** (deterministic, no network): headline = "The last {N} min on stream", where N is the trigger window length in minutes; bullets = the most recent voice segment, the most recent note, and the chat line with the most repeated words in the window, each trimmed to 90 characters, starting with a capital letter, and citing its own source id. Events are never recap content; retain them in the buffer and provenance counts only. If a raid window has no voice, notes or chat, show a welcome ticket with one short stream-started line instead of a recap card. Other triggers with no voice, notes or chat produce no card.
@@ -50,8 +50,8 @@ An in-memory ring buffer of source items `{ id, t, kind, text, user }`, also app
 
 ## Surfaces
 
-- **Overlay** `GET /overlay` (OBS Browser Source, 1920x1080, transparent background). Receives cards over Server-Sent Events from `GET /events`. A roughly 1.2-second printed-ticket cold open precedes the ticket; reduced-motion mode skips the cold open. Sound effects and cached narrator audio are optional and fail soft. Keep each ticket on air for at least the narration length plus two seconds. No tokens or secrets in the URL. Visual design comes from `DESIGN.md`.
-- **Control panel** `GET /control` (opened in Chrome on the streamer's machine): connection status, voice capture toggle and live transcript, note field, break buttons, simulate buttons, the pending card with configurable approval, narrator voice and sound effects toggles, and a log of the last 20 cards with their sources and clip links. Card text is sent to OpenAI to make narrator audio.
+- **Overlay** `GET /overlay` (OBS Browser Source, 1920x1080, transparent background). Receives cards over Server-Sent Events from `GET /events`. A roughly 1.4-second broadcast lower-third cold open precedes the ticket: a navy ticket band expands from the left, the label and large channel name rise in, then the band drops and fades as the ticket enters. The `sting.ogg` plays as the band enters. Motion uses transform and opacity; reduced-motion mode skips the cold open. Sound effects and cached narrator audio are optional and fail soft. Keep each ticket on air for at least the narration length plus two seconds. No tokens or secrets in the URL. Visual design comes from `DESIGN.md`.
+- **Control panel** `GET /control` (opened in Chrome on the streamer's machine): connection status, voice capture toggle and live transcript, note field, break buttons, simulate buttons, the pending card with configurable approval, narrator voice and sound effects toggles, and a log of the last 20 cards with their sources and clip links. A recap card enters the approval queue immediately while narrator audio is generated in the background. Approval waits at most 3 seconds for voice audio and then continues silently; the generation request times out after 20 seconds. Card text is sent to OpenAI to make narrator audio.
 - **Chat line**: posted with `POST https://api.twitch.tv/helix/chat/messages` (scope `user:write:chat`), max 500 characters, prefixed `Previously on:`.
 
 ## Twitch connection
@@ -64,13 +64,16 @@ An in-memory ring buffer of source items `{ id, t, kind, text, user }`, also app
 ## Modes
 
 - `npm start`: real Twitch.
-- `npm run demo`: no Twitch account or API key needed. With `OPENAI_API_KEY`, uses structured model recaps; without it, uses the deterministic fallback. Replays `fixtures/demo-session.jsonl` through the same pipeline at 4x speed, with replay timestamps aligned to the local clock so trigger windows include the replayed sources. It fires one of each trigger and shows a DEMO REPLAY banner on the overlay and panel.
+- `npm run demo`: no Twitch account or API key needed. With `OPENAI_API_KEY`, uses structured model recaps; without it, uses the deterministic fallback. At startup it loads the first 3 minutes of `fixtures/demo-session.jsonl` at once, spreading their timestamps across the 3 minutes before the current time, then replays the remaining fixture at 4x speed. It fires one of each trigger and shows a DEMO REPLAY banner on the overlay and panel.
+- `npm run record-demo`: with `OPENAI_API_KEY`, runs the demo card pipeline through the ad-break, raid and `!catchup` triggers, and saves grounded cards, their source items and cached narrator WAV files under `web-demo/recording/`. It does not write tokens or `.data/` files.
+- `npm run build:web`: validates the recording and builds the static browser demo in `dist-web/`. The site reuses `public/overlay.js` and `public/overlay.css` through a replay adapter, so the recorded cards run the same cold open, sound, narration and ticket sequence without SSE.
+- GitHub Pages deploys the static demo on pushes to `main` with `.github/workflows/pages.yml`.
 - `npm run check-twitch`: validates the token, prints the channel login and `broadcaster_type`, subscribes to chat and waits up to 60 s for one message. Never prints tokens.
 - `npm test`: unit tests with `node:test`.
 - `npm run eval`: runs the recap engine over the fixtures and writes `results/eval-<date>.json` with: cards produced, bullets kept vs dropped by the grounding check, fallback rate, and p50/p95 latency.
 - `npm start`: appends one privacy-filtered decision record per card to `results/live-cards.jsonl`; `npm run live-report` prints counts by trigger and status plus p50/p95 latency from that file. Demo and tests do not write live-card records.
 - The control panel can persist auto-approval after 5, 10 or 20 seconds, or hold a card until manual approval, in `.data/approval-settings.json`. Auto-approval shows the card and sends its chat line when the timer expires; hold mode does neither until approval.
-- Narrator voice and sound effects are on by default and persist in `.data/feature-settings.json`. Narration uses OpenAI Realtime audio with the `gpt-realtime-2.1-mini` model and `marin` voice; card text is sent to OpenAI. If unavailable, the card runs silently.
+- Narrator voice and sound effects are on by default and persist in `.data/feature-settings.json`. Narration uses OpenAI Realtime audio with the `gpt-realtime-2.1-mini` model and `marin` voice; card text is sent to OpenAI. Cards queue without waiting for voice generation. Approval waits at most 3 seconds for the background request; generation itself times out after 20 seconds. If unavailable, the card runs silently.
 - The browser speaks only cached server audio from a UUID-validated route. Do not include tokens or secrets in the route; cache WAV files in `.data/audio/`.
 
 ## Constraints
@@ -78,6 +81,6 @@ An in-memory ring buffer of source items `{ id, t, kind, text, user }`, also app
 - Node.js 22+, ESM JavaScript, as few dependencies as possible (`ws`, `openai`, `zod`). Env loaded with `node --env-file=.env`.
 - Server binds to `127.0.0.1` only. Port from env `PORT`, default 4777.
 - Secrets only in `.env` (gitignored). Provide `.env.example`: `TWITCH_CLIENT_ID`, `TWITCH_CHANNEL`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `BLOCKED_TERMS`, `PORT`.
-- No numbers in the README or UI that do not come from a file in `results/`.
+- Numbers in the README or UI must come from a file in `results/` or a reported test run. Do not invent or round up measured values.
 - No emoji anywhere: UI, logs, commits, docs.
 - English for all code, UI and docs (submission rule).

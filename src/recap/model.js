@@ -7,7 +7,7 @@ export const RecapSchema = z.object({
   bullets: z.array(z.object({
     text: z.string().max(90),
     sources: z.array(z.string().regex(/^S\d+$/)).min(1).max(4)
-  })).min(1).max(3)
+  })).min(2).max(3)
 });
 
 export class ModelRequestError extends Error {
@@ -30,6 +30,7 @@ const SYSTEM_PROMPT = [
   'Do not end the headline with a period.',
   'The headline must never start with the word Previously.',
   'The stub already shows who arrived, so keep the headline and bullets focused on what happened on stream.',
+  'Write two or three bullets when at least two distinct facts are supported by the sources.',
   'Keep the headline to 60 characters and each bullet to 90 characters.'
 ].join(' ');
 

@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createFeatureSettings } from '../src/cards/feature-settings.js';
 import { createNarrator } from '../src/audio/narrator.js';
+import { NARRATOR_TIMEOUT_MS } from '../src/audio/narrator.js';
 import { createClipReceipts } from '../src/twitch/clip-receipts.js';
 import { TWITCH_SCOPES } from '../src/twitch/auth.js';
 import { createServer } from '../src/server.js';
@@ -79,6 +80,10 @@ test('narrator fails softly for missing key, socket errors, incomplete and timed
   await assert.rejects(createNarrator({ apiKey: 'key', audioDirectory: dir, WebSocketImpl: IncompleteSocket }).generate(card), /incomplete/);
   class QuietSocket extends EventEmitter { close() {} }
   await assert.rejects(createNarrator({ apiKey: 'key', audioDirectory: join(dir, 'quiet'), WebSocketImpl: QuietSocket, timeoutMs: 5 }).generate(card), /timed out/);
+});
+
+test('narrator generation timeout is twenty seconds', () => {
+  assert.equal(NARRATOR_TIMEOUT_MS, 20_000);
 });
 
 test('narrator audio route serves only valid card ids', async t => {

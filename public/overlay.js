@@ -1,6 +1,7 @@
 const ticket = document.querySelector('#ticket');
-const eventSource = new EventSource('/events');
 const $ = selector => document.querySelector(selector);
+const replayMode = new URLSearchParams(location.search).get('replay') === '1';
+const eventSource = replayMode ? null : new EventSource('events');
 let hideTimer;
 let coldTimer;
 let currentCard = null;
@@ -9,7 +10,7 @@ const failedPlayback = new Set();
 
 $('#demo-tag').hidden = true;
 
-eventSource.addEventListener('state', event => {
+eventSource?.addEventListener('state', event => {
   const state = JSON.parse(event.data);
   $('#demo-tag').hidden = !state.demo;
   soundEffectsEnabled = state.soundEffectsEnabled !== false;
@@ -18,13 +19,27 @@ eventSource.addEventListener('state', event => {
     if (ticket.hidden || ticket.dataset.cardId !== state.onAir.id) showCard(state.onAir, false);
   }
 });
-eventSource.addEventListener('card:show', event => showCard(JSON.parse(event.data), true));
-eventSource.addEventListener('card:hide', event => {
+eventSource?.addEventListener('card:show', event => showCard(JSON.parse(event.data), true));
+eventSource?.addEventListener('card:hide', event => {
   const data = JSON.parse(event.data);
   if (ticket.dataset.cardId === data.id) hideCard();
 });
 
-function showCard(card, animate) {
+if (replayMode) {
+  window.addEventListener('message', event => {
+    if (event.source !== window.parent || event.origin !== location.origin || !event.data) return;
+    if (event.data.type === 'previously-on:settings') {
+      soundEffectsEnabled = Boolean(event.data.soundEffectsEnabled);
+    } else if (event.data.type === 'previously-on:show' && event.data.card) {
+      showCard(event.data.card, event.data.animate !== false, Boolean(event.data.muteAudio));
+    } else if (event.data.type === 'previously-on:hide') {
+      hideCard();
+    }
+  });
+  window.parent.postMessage({ type: 'previously-on:ready' }, location.origin);
+}
+
+function showCard(card, animate, muteAudio = false) {
   currentCard = card;
   window.clearTimeout(hideTimer);
   window.clearTimeout(coldTimer);
@@ -34,7 +49,7 @@ function showCard(card, animate) {
     window.setTimeout(() => {
       ticket.hidden = true;
       ticket.classList.remove('exit');
-      showCard(card, true);
+      showCard(card, true, muteAudio);
     }, 200);
     return;
   }
@@ -43,23 +58,28 @@ function showCard(card, animate) {
     $('#cold-channel').textContent = card.channel ?? '';
     coldOpen.hidden = false;
     coldOpen.classList.remove('play');
+    coldOpen.classList.remove('leave');
     void coldOpen.offsetWidth;
     coldOpen.classList.add('play');
-    if (soundEffectsEnabled) playSound($('#sting-sound'), card.id);
+    if (soundEffectsEnabled && !muteAudio) playSound($('#sting-sound'), card.id);
     coldTimer = window.setTimeout(() => {
-      coldOpen.hidden = true;
       coldOpen.classList.remove('play');
-      enterTicket(card, true);
+      coldOpen.classList.add('leave');
+      enterTicket(card, true, muteAudio);
+      window.setTimeout(() => {
+        coldOpen.hidden = true;
+        coldOpen.classList.remove('leave');
+      }, 200);
     }, 1200);
     return;
   }
-  enterTicket(card, animate);
+  enterTicket(card, animate, muteAudio);
 }
 
-function enterTicket(card, animate) {
+function enterTicket(card, animate, muteAudio = false) {
   renderCard(card, animate);
-  if (soundEffectsEnabled) window.setTimeout(() => playSound($('#stamp-sound'), card.id), animate ? 700 : 0);
-  if (card.audioUrl) {
+  if (soundEffectsEnabled && !muteAudio) window.setTimeout(() => playSound($('#stamp-sound'), card.id), animate ? 700 : 0);
+  if (card.audioUrl && !muteAudio) {
     const audio = $('#narrator-audio');
     audio.src = card.audioUrl;
     audio.volume = 0.55;

@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { rmSync } from 'node:fs';
 import { startRuntime } from './runtime.js';
-import { replayFixture } from './demo-replay.js';
+import { preloadFixture, replayFixture } from './demo-replay.js';
 
 const channel = 'MeadowMoth';
 const demoSessionPath = `.data/demo-session-${process.pid}.jsonl`;
@@ -12,9 +12,14 @@ const runtime = await startRuntime({
   adBreakTimeScale: 0.25
 });
 
-void readFile(new URL('../fixtures/demo-session.jsonl', import.meta.url), 'utf8')
-  .then(fixtureText => replayFixture(runtime.sourceBuffer, { fixtureText }))
-  .catch(error => console.error(`Demo fixture error: ${error.message}`));
+const fixtureText = await readFile(new URL('../fixtures/demo-session.jsonl', import.meta.url), 'utf8');
+const preload = await preloadFixture(runtime.sourceBuffer, { fixtureText });
+void replayFixture(runtime.sourceBuffer, {
+  fixtureText,
+  afterFixtureTime: preload.afterFixtureTime,
+  timelineStart: preload.replayStart,
+  initialDelayMs: 0
+}).catch(error => console.error(`Demo fixture error: ${error.message}`));
 schedule(3000, () => runtime.pipeline.simulateRaid());
 schedule(23_000, () => runtime.pipeline.simulateCatchup());
 schedule(43_000, async () => {

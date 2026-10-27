@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { createSourceBuffer } from '../src/sources/buffer.js';
 import { createCardPipeline } from '../src/cards/pipeline.js';
 import { buildRecap } from '../src/recap/index.js';
-import { replayFixture } from '../src/demo-replay.js';
+import { preloadFixture, replayFixture } from '../src/demo-replay.js';
 
 test('the demo replay places fixture sources in time for its simulated ad-break card', async t => {
   const fixtureText = await readFile(new URL('../fixtures/demo-session.jsonl', import.meta.url), 'utf8');
@@ -35,6 +35,44 @@ test('the demo replay places fixture sources in time for its simulated ad-break 
   assert.equal(pipeline.getState().pending?.trigger, 'ad-break');
   assert.ok(pipeline.getState().pending.bullets.length > 0);
   assert.ok(pipeline.getState().pending.sourceDetails.some(source => ['voice', 'note', 'chat'].includes(source.kind)));
+});
+
+test('demo preloads three fixture minutes across the preceding three minutes and feeds the first raid model facts', async t => {
+  const fixtureText = await readFile(new URL('../fixtures/demo-session.jsonl', import.meta.url), 'utf8');
+  const start = Date.parse('2026-10-27T18:00:00Z');
+  const sourceBuffer = createMemoryBuffer();
+  const preload = await preloadFixture(sourceBuffer, { fixtureText, now: () => start });
+  assert.ok(preload.loaded > 0);
+  const loaded = await sourceBuffer.window({ from: start - 180_000, to: start });
+  assert.ok(loaded.length >= 20);
+  assert.equal(Date.parse(loaded[0].t), start - 180_000);
+  assert.ok(Date.parse(loaded.at(-1).t) <= start);
+
+  let modelItems;
+  const pipeline = createCardPipeline({
+    sourceBuffer,
+    channel: 'MeadowMoth',
+    mode: 'demo',
+    now: () => start + 3000,
+    narrator: { generate: async () => null },
+    featureSettings: { get: () => ({ narratorVoice: false, soundEffects: true }), set: async value => value },
+    recap: async ({ items }) => {
+      modelItems = items;
+      return {
+        headline: 'The greenhouse is ready.',
+        bullets: [
+          { text: 'The garden beds were planted.', sources: [items.find(item => item.kind === 'voice').id] },
+          { text: 'The bridge still needs two boards.', sources: [items.find(item => item.kind === 'chat').id] }
+        ],
+        provenance: { voiceSeconds: 30, chatCount: 2, eventCount: 0, noteCount: 0 },
+        engine: 'model', latencyMs: 4
+      };
+    }
+  });
+  const card = await pipeline.simulateRaid();
+  assert.equal(card.engine, 'model');
+  assert.ok(card.bullets.length >= 2 && card.bullets.length <= 3);
+  assert.ok(modelItems.some(item => item.kind === 'voice' || item.kind === 'note' || item.kind === 'chat'));
 });
 
 function createMemoryBuffer() {

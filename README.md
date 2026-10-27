@@ -2,81 +2,84 @@
 
 Viewers who come back from an ad break, or join mid-stream, get a 15-second recap of what they missed.
 
-Previously On is for small streamers who lose viewers at every break and viewers who arrive after the stream has started. Raids are also supported.
+![Previously On in action](docs/media/hero.gif)
 
-[Video: coming soon]
+Try it in your browser, no install: https://kasbsquall.github.io/previously-on/
 
-## Screenshots
+Video: coming soon.
 
-![Previously On overlay](docs/media/overlay.png)
-
-![Previously On control panel](docs/media/control.png)
+- It fires when an ad break starts through EventSub `channel.ad_break.begin`, then shows the recap when the break ends.
+- It plays on stream for everyone, so viewers install nothing.
+- Every recap line cites stream moments; the streamer can approve, veto or hold each card.
 
 ## Proof
 
-- [Real Twitch and OBS tests](docs/VERIFICATION.md)
-- Run `npm test`. The suite covers source grounding, fallback behavior, approval and veto, catch-up cooldowns, EventSub keepalives, and clock skew.
-- [Build notes and Codex session details](BUILT_WITH_CODEX.md)
+| Check | Result |
+|---|---|
+| Live Twitch `!catchup` | A recap used the viewer's three chat messages, written in Spanish, and returned in English. |
+| Live Twitch raid | EventSub delivered the raid and a card reached the overlay; that first test had no other recap sources in its window. |
+| OBS | Ticket displayed in OBS 32.1.2 at 1920x1080. |
+| Model evaluation | 3 cards; 9 bullets kept, 0 dropped; fallback rate 0; p50 2,738 ms, p95 3,429 ms. This is a synthetic fixture evaluation, not live latency. |
+| Tests | 68 passed with `npm test`; the suite covers grounding, fallback, veto, cooldowns, keepalive, clock skew and the recorded demo format. |
 
-## Try it in 2 minutes
+Details and limits are in [docs/VERIFICATION.md](docs/VERIFICATION.md). Evaluation data: [results/eval-2026-10-27.json](results/eval-2026-10-27.json).
+
+## How it works
+
+```mermaid
+flowchart LR
+  E[EventSub and chat] --> B[Source buffer]
+  V[Voice and notes] --> B
+  B --> O[OpenAI recap with source check]
+  O --> A[Streamer approval]
+  A --> T[Overlay with voice]
+  A --> C[Chat reply]
+  E --> R[Clip and stream marker]
+  R --> C
+```
+
+The recap uses recent chat, voice transcripts and notes. EventSub events stay in the buffer for provenance, not recap text. OpenAI returns structured output; a grounding check removes bullets that cite unknown sources or contain blocked terms. Refusal, incomplete output, a timeout or a failed check uses the deterministic fallback.
+
+## Try it locally
 
 ```sh
 npm install
 npm run demo
 ```
 
-The demo needs no Twitch account or API key. With `OPENAI_API_KEY` set, it uses structured model recaps; without it, it uses the deterministic fallback.
+The demo needs no Twitch account or API key. Add `OPENAI_API_KEY` to `.env` to use model recaps and narrator voice; without it the demo uses the deterministic fallback and runs silently. Open the panel at `http://127.0.0.1:4777/control` and overlay at `http://127.0.0.1:4777/overlay`. Use **Simulate raid**, **Simulate !catchup**, or **Simulate ad break (60 s)**, then approve or veto the pending card.
 
-Open the overlay at [http://127.0.0.1:4777/overlay](http://127.0.0.1:4777/overlay) and the control panel at [http://127.0.0.1:4777/control](http://127.0.0.1:4777/control). The demo replays a sample session and runs simulated triggers. In the panel, use **Simulate raid** or **Simulate !catchup**, then approve or veto the waiting card.
+## Triggers and settings
 
-## How it works
-
-| Trigger | Twitch event or API | Result |
+| Trigger | Source | Result |
 |---|---|---|
-| Ad break | EventSub `channel.ad_break.begin`; real triggers also use Helix Create Clip, Get Clips and Create Stream Marker | Recap after the break ends; ad events require an affiliate or partner channel |
-| `!catchup` | EventSub `channel.chat.message`; Helix `POST /helix/chat/messages` | Reply to the requester; show a ticket when cooldown rules allow |
-| Back from break | Control panel action; Helix `POST /helix/chat/messages` for the recap line | Recap ticket and chat line |
-| Raid | EventSub `channel.raid`; real triggers also use Helix Create Clip, Get Clips and Create Stream Marker | Welcome ticket and chat line for the raiding channel |
+| Ad break | EventSub `channel.ad_break.begin`; real triggers request a clip and stream marker | Card and chat line when the break ends |
+| `!catchup` | EventSub `channel.chat.message` | Chat reply; overlay card when cooldown rules allow |
+| Back from break | Panel buttons | Card and chat line for the time before the break |
+| Raid | EventSub `channel.raid`; real triggers request a clip and stream marker | Welcome card and chat line |
 
-The recap selects recent chat, voice transcripts and streamer notes as content; EventSub events remain in the buffer for provenance counts only. The OpenAI Responses API returns structured output. A grounding check drops bullets that cite unknown sources or contain blocked terms. Refused, incomplete, timed-out or ungrounded model output uses the deterministic fallback.
+Ad breaks need an affiliate or partner channel. The panel can auto-approve after 5, 10 or 20 seconds, or **Hold until I approve**. When the timer runs out, the card is approved, shown and posted to chat; hold mode waits for the streamer and never posts automatically. Narrator voice and sound effects are on by default and can be toggled independently. Missing clip scopes or Twitch API errors do not block a card; simulated triggers skip clip and marker calls.
 
-The control panel offers auto-approval after 5, 10 or 20 seconds, or **Hold until I approve**. When an auto-approval timer runs out, the card is approved, shown on stream and sent to chat. Hold mode never approves or posts automatically; the streamer must approve the card. Narrator voice and sound effects are toggled separately and on by default.
+## Privacy
 
-The server binds to `127.0.0.1`; secrets belong in `.env`. Chrome's Web Speech API sends voice audio to Google's speech service. Chat, transcript text and notes go to OpenAI for recap; card text also goes to OpenAI to make narrator voice audio. OBS Browser Source audio must be enabled to hear narration and sound effects. The app sends approved recap lines to Twitch.
-
-For real raid and ad-break triggers, the app requests a Twitch clip and a stream marker. A clip link is added to chat and the panel log only after Get Clips confirms it is ready. Missing scopes, offline streams, disabled clips and API errors do not block the recap. Simulated triggers skip Twitch clip and marker calls.
-
-The narrator uses OpenAI Realtime audio with the `gpt-realtime-2.1-mini` model and `marin` voice. If voice generation or browser playback fails, the card still appears without narration.
+The server binds only to `127.0.0.1`; put secrets in `.env`. Chrome's Web Speech API sends captured voice audio to Google's speech service. Chat, notes, transcript text and card text go to OpenAI for recaps and narrator audio. OBS Browser Source audio must be enabled to hear narration and sound effects. Approved recap lines and confirmed clip links are sent to Twitch chat.
 
 ## Run it on your channel
 
-Register a Twitch application as a **public client** in the Twitch developer console. Use Device Code Grant Flow; this app does not use a client secret. Copy `.env.example` to `.env` and set `TWITCH_CLIENT_ID` and `TWITCH_CHANNEL`. Device authorization requests chat, ad, follower, clip-edit and broadcast-marker scopes. `npm run check-twitch` reports whether clip and marker scopes were granted. Set `OPENAI_API_KEY` to enable model recaps and narrator audio; it is optional. `OPENAI_MODEL` defaults to `gpt-5.4-mini`.
+Register a Twitch application as a **public client** and use Device Code Grant Flow; no client secret is used. Copy `.env.example` to `.env`, set `TWITCH_CLIENT_ID` and `TWITCH_CHANNEL`, then run:
 
 ```sh
 npm install
 npm start
 ```
 
-Follow the device authorization prompt in the terminal. Add an OBS Browser Source using `http://127.0.0.1:4777/overlay`, set its width to 1920 and height to 1080, keep the browser source background transparent, and enable browser-source audio. Open `http://127.0.0.1:4777/control` in Chrome for moderation, approval timing, narrator and sound settings, voice capture and notes.
-
-## What was tested on real Twitch
-
-Live tests are documented in [docs/VERIFICATION.md](docs/VERIFICATION.md). When `results/live-cards.jsonl` has records, run `npm run live-report` for counts by trigger and status and latency percentiles.
-
-## Limits, said plainly
-
-- Ad breaks require an affiliate or partner channel. On other channels, use the simulated ad break; simulated cards are labeled SIMULATED.
-- Voice capture requires Chrome's Web Speech API, which sends audio to Google's speech service.
-- Recaps are only as good as the recent chat, voice and notes available in the source window.
-- One channel runs per process.
+Complete the device authorization shown in the terminal. Add `http://127.0.0.1:4777/overlay` as an OBS Browser Source, set it to 1920x1080 with a transparent background, and enable browser-source audio. Open `http://127.0.0.1:4777/control` in Chrome. `OPENAI_API_KEY` enables model recaps and narration; `OPENAI_MODEL` defaults to `gpt-5.4-mini`.
 
 ## Built with Codex
 
 Codex session ID: `01a174cd-3a2a-7f21-a9bf-1289a1e0b57a`.
 
-The build ran in one Codex thread across ten prompts. Each prompt was written from the review of the previous block, and the resulting fixes were tested before the next prompt.
-
-More build details are in [BUILT_WITH_CODEX.md](BUILT_WITH_CODEX.md).
+The build ran in one Codex thread across twelve prompts. Each prompt was written from the review of the previous block. See [BUILT_WITH_CODEX.md](BUILT_WITH_CODEX.md).
 
 ## License
 

@@ -4,6 +4,7 @@ import { createApprovalSettings } from './approval-settings.js';
 import { buildRecap } from '../recap/index.js';
 
 const ON_AIR_MS = 15_000;
+const APPROVAL_VOICE_WAIT_MS = 3_000;
 const CATCHUP_VIEWER_COOLDOWN = 120_000;
 const CATCHUP_GLOBAL_COOLDOWN = 30_000;
 const MAX_CHAT_CHARACTERS = 500;
@@ -30,6 +31,7 @@ export function createCardPipeline({
   const emitter = new EventEmitter();
   const cooldowns = new Map();
   const cards = [];
+  const audioJobs = new Map();
   const voiceSegments = [];
   let pending = null;
   let onAirCard = null;
@@ -131,6 +133,7 @@ export function createCardPipeline({
       bullets,
       welcomeOnly,
       sourceDetails,
+      sourceItems: items.map(item => ({ id: item.id, t: item.t, kind: item.kind, text: item.text, user: item.user })),
       provenance,
       engine,
       latencyMs: recapResult.latencyMs,
@@ -143,16 +146,33 @@ export function createCardPipeline({
       approvalSeconds: approvalSettings.get().seconds
     };
     if (receiptPromise) card.receiptPromise = receiptPromise;
-    if (featureSettings.get().narratorVoice) {
-      try {
-        const audio = await narrator?.generate({ cardId: card.id, channel, headline, bullets });
-        if (audio) {
-          card.audioUrl = audio.audioUrl;
-          card.voiceDurationMs = audio.durationMs;
-        } else log(`Narrator voice unavailable for card ${card.id}.`);
-      } catch (error) {
-        log(`Narrator voice unavailable for card ${card.id}.`);
-      }
+    card.voicePending = Boolean(featureSettings.get().narratorVoice && overlayEligible);
+    if (card.voicePending) {
+      card.voicePromise = Promise.resolve().then(() => narrator.generate({ cardId: card.id, channel, headline, bullets }))
+        .then(audio => {
+          card.voicePending = false;
+          if (audio && !card.voiceTimedOut) {
+            card.audioUrl = audio.audioUrl;
+            card.voiceDurationMs = audio.durationMs;
+          } else if (!audio) {
+            log(`Narrator voice unavailable for card ${card.id}.`);
+          }
+          addLog(card);
+          emitter.emit('voice:ready', publicCard(card));
+          publishState();
+          return audio ?? null;
+        }).catch(() => {
+          card.voicePending = false;
+          log(`Narrator voice unavailable for card ${card.id}.`);
+          addLog(card);
+          emitter.emit('voice:ready', publicCard(card));
+          publishState();
+          return null;
+        });
+      audioJobs.set(card.id, card.voicePromise);
+      if (audioJobs.size > 20) audioJobs.delete(audioJobs.keys().next().value);
+    } else {
+      card.voicePending = false;
     }
     if (sequence !== latestTriggerSequence) return null;
     setPendingTimer(card);
@@ -190,6 +210,8 @@ export function createCardPipeline({
     recordDecision(card);
     emitter.emit('approved', { ...publicCard(card), automatic });
     if (card.overlayEligible) {
+      const narratorAudio = await waitForAudio(card.id, APPROVAL_VOICE_WAIT_MS);
+      if (!narratorAudio && card.voicePending) card.voiceTimedOut = true;
       if (onAirTimer) clearTimer(onAirTimer);
       lastOnAirAt = now();
       const airDuration = Math.max(ON_AIR_MS, 1200 + 760 + (card.voiceDurationMs ?? 0) + 2000);
@@ -268,6 +290,23 @@ export function createCardPipeline({
       ? setTimer(() => { void approve(card.id, true); }, card.approvalSeconds * 1000)
       : null;
     card.deadline = card.approvalMode === 'timed' ? now() + card.approvalSeconds * 1000 : null;
+  }
+
+  function waitForAudio(cardId, timeoutMs = 20_000) {
+    const audioJob = audioJobs.get(cardId);
+    if (!audioJob) return Promise.resolve(null);
+    return new Promise(resolve => {
+      let settled = false;
+      let timer;
+      const finish = result => {
+        if (settled) return;
+        settled = true;
+        if (timer !== undefined) clearTimer(timer);
+        resolve(result ?? null);
+      };
+      timer = setTimer(() => finish(null), timeoutMs);
+      audioJob.then(finish, () => finish(null));
+    });
   }
 
   async function handleRaid(event, { simulated = false } = {}) {
@@ -451,6 +490,7 @@ export function createCardPipeline({
 
   const api = {
     on(...args) { emitter.on(...args); return api; },
+    off(...args) { emitter.off(...args); return api; },
     getState,
     handleEvent,
     handleChat,
@@ -469,12 +509,13 @@ export function createCardPipeline({
     veto,
     setApprovalSettings,
     setFeatureSettings,
-    logAudioFailure
+    logAudioFailure,
+    waitForAudio
   };
   return api;
 
   function publicCard(card) {
-    const { timer, deadline, receiptPromise, ...copy } = card;
+    const { timer, deadline, receiptPromise, voicePromise, voiceTimedOut, ...copy } = card;
     return {
       ...copy,
       remainingMs: pending?.id === card.id
