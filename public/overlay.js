@@ -1,29 +1,64 @@
 const ticket = document.querySelector('#ticket');
 const $ = selector => document.querySelector(selector);
 const replayMode = new URLSearchParams(location.search).get('replay') === '1';
-const eventSource = replayMode ? null : new EventSource('events');
-let hideTimer;
-let coldTimer;
+let eventSource = null;
+let reconnectTimer = null;
+let reconnectDelay = 500;
+let hideTimer = null;
+let coldTimer = null;
 let currentCard = null;
 let soundEffectsEnabled = true;
 const failedPlayback = new Set();
 
 $('#demo-tag').hidden = true;
 
-eventSource?.addEventListener('state', event => {
-  const state = JSON.parse(event.data);
+function applyOverlayState(state) {
   $('#demo-tag').hidden = !state.demo;
   soundEffectsEnabled = state.soundEffectsEnabled !== false;
   if (state.onAir && state.onAir.until > Date.now()) {
-    if (currentCard?.id === state.onAir.id) return;
-    if (ticket.hidden || ticket.dataset.cardId !== state.onAir.id) showCard(state.onAir, false);
+    if (currentCard?.id === state.onAir.id && (!ticket.hidden || coldTimer !== null)) return;
+    showCard(state.onAir, false);
   }
-});
-eventSource?.addEventListener('card:show', event => showCard(JSON.parse(event.data), true));
-eventSource?.addEventListener('card:hide', event => {
-  const data = JSON.parse(event.data);
-  if (ticket.dataset.cardId === data.id) hideCard();
-});
+}
+
+function loadOverlayState(source) {
+  void fetch('/api/state').then(response => {
+    if (!response.ok) throw new Error('State request failed.');
+    return response.json();
+  }).then(applyOverlayState).catch(() => {
+    if (source !== eventSource) return;
+    window.clearTimeout(reconnectTimer);
+    reconnectTimer = window.setTimeout(() => loadOverlayState(source), reconnectDelay);
+    reconnectDelay = Math.min(5000, reconnectDelay * 2);
+  });
+}
+
+function connectOverlayEvents() {
+  if (replayMode) return;
+  const source = new EventSource('/events');
+  eventSource = source;
+  source.addEventListener('state', event => applyOverlayState(JSON.parse(event.data)));
+  source.addEventListener('card:show', event => showCard(JSON.parse(event.data), true));
+  source.addEventListener('card:hide', event => {
+    const data = JSON.parse(event.data);
+    if (ticket.dataset.cardId === data.id) hideCard();
+  });
+  source.onopen = () => {
+    if (source !== eventSource) return;
+    reconnectDelay = 500;
+    loadOverlayState(source);
+  };
+  source.onerror = () => {
+    if (source !== eventSource) return;
+    source.close();
+    eventSource = null;
+    window.clearTimeout(reconnectTimer);
+    reconnectTimer = window.setTimeout(connectOverlayEvents, reconnectDelay);
+    reconnectDelay = Math.min(5000, reconnectDelay * 2);
+  };
+}
+
+connectOverlayEvents();
 
 if (replayMode) {
   window.addEventListener('message', event => {
@@ -63,6 +98,7 @@ function showCard(card, animate, muteAudio = false) {
     coldOpen.classList.add('play');
     if (soundEffectsEnabled && !muteAudio) playSound($('#sting-sound'), card.id);
     coldTimer = window.setTimeout(() => {
+      coldTimer = null;
       coldOpen.classList.remove('play');
       coldOpen.classList.add('leave');
       enterTicket(card, true, muteAudio);
@@ -196,6 +232,7 @@ function iconFor(kind) {
 function hideCard() {
   window.clearTimeout(hideTimer);
   window.clearTimeout(coldTimer);
+  coldTimer = null;
   $('#cold-open').hidden = true;
   $('#cold-open').classList.remove('play');
   $('#narrator-audio').pause();

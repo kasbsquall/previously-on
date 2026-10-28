@@ -1,13 +1,50 @@
-const eventSource = new EventSource('/events');
 const $ = selector => document.querySelector(selector);
 let currentState = null;
 let recognition = null;
 let vetoAnimating = false;
+let eventSource = null;
+let reconnectTimer = null;
+let reconnectDelay = 500;
 
 const sourceEvents = ['state', 'pending', 'approved', 'vetoed', 'log', 'break', 'voice:segment', 'voice:enabled', 'note', 'chat:error'];
-for (const name of sourceEvents) eventSource.addEventListener(name, event => handleServerEvent(name, JSON.parse(event.data)));
-eventSource.onerror = () => $('#connection-error').hidden = false;
-eventSource.onopen = () => $('#connection-error').hidden = true;
+function refreshPanelState(source) {
+  void fetch('/api/state').then(response => {
+    if (!response.ok) throw new Error('Could not load control panel state.');
+    return response.json();
+  }).then(state => {
+    if (source === eventSource) handleServerEvent('state', state);
+  }).catch(error => {
+    if (source !== eventSource) return;
+    $('#slips').setAttribute('aria-busy', 'false');
+    $('#pending-skeleton').hidden = true;
+    $('#log-skeleton').hidden = true;
+    $('#panel-error').textContent = error.message;
+    $('#panel-error').hidden = false;
+    setConnection('offline');
+  });
+}
+
+function connectPanelEvents() {
+  const source = new EventSource('/events');
+  eventSource = source;
+  for (const name of sourceEvents) source.addEventListener(name, event => handleServerEvent(name, JSON.parse(event.data)));
+  source.onopen = () => {
+    if (source !== eventSource) return;
+    $('#connection-error').hidden = true;
+    reconnectDelay = 500;
+    refreshPanelState(source);
+  };
+  source.onerror = () => {
+    if (source !== eventSource) return;
+    $('#connection-error').hidden = false;
+    source.close();
+    eventSource = null;
+    window.clearTimeout(reconnectTimer);
+    reconnectTimer = window.setTimeout(connectPanelEvents, reconnectDelay);
+    reconnectDelay = Math.min(5000, reconnectDelay * 2);
+  };
+}
+connectPanelEvents();
 
 $('#break-button').addEventListener('click', () => post('/api/break'));
 $('#back-button').addEventListener('click', () => post('/api/back'));
@@ -104,24 +141,6 @@ if (Recognition) {
   $('#voice-help').textContent = 'Voice capture needs Chrome. You can still add notes.';
 }
 
-fetch('/api/state').then(response => {
-  if (!response.ok) throw new Error('Could not load control panel state.');
-  return response.json();
-}).then(state => {
-  currentState = state;
-  $('#slips').setAttribute('aria-busy', 'false');
-  $('#pending-skeleton').hidden = true;
-  $('#log-skeleton').hidden = true;
-  renderAll();
-}).catch(error => {
-  $('#slips').setAttribute('aria-busy', 'false');
-  $('#pending-skeleton').hidden = true;
-  $('#log-skeleton').hidden = true;
-  $('#panel-error').textContent = error.message;
-  $('#panel-error').hidden = false;
-  setConnection('offline');
-});
-
 window.setInterval(updateCountdown, 100);
 
 function handleServerEvent(name, data) {
@@ -130,7 +149,12 @@ function handleServerEvent(name, data) {
     return;
   }
   if (!currentState) currentState = { mode: 'real', cards: [], voiceSegments: [], voiceEnabled: false, onBreak: false };
-  if (name === 'state') currentState = data;
+  if (name === 'state') {
+    currentState = data;
+    $('#slips').setAttribute('aria-busy', 'false');
+    $('#pending-skeleton').hidden = true;
+    $('#log-skeleton').hidden = true;
+  }
   else if (name === 'pending') currentState.pending = data;
   else if (name === 'log') currentState.cards = data;
   else if (name === 'break') currentState.onBreak = data.onBreak;

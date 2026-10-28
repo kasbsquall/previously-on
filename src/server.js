@@ -86,16 +86,17 @@ function handleSSE(request, response, bus, getState) {
     'x-accel-buffering': 'no',
     'content-security-policy': "default-src 'self'; connect-src 'self'; img-src 'self' data:; font-src 'self'; style-src 'self'; script-src 'self'"
   });
-  response.write(formatSSE('state', getState()));
   const events = ['state', 'pending', 'approved', 'vetoed', 'log', 'break', 'voice:segment', 'voice:enabled', 'note', 'card:show', 'card:hide', 'chat:error', 'ad-break:scheduled'];
   const bound = new Map(events.map(name => {
     const handler = data => response.write(formatSSE(name, data));
     bus.on(name, handler);
     return [name, handler];
   }));
-  request.on('close', () => {
+  response.write('retry: 500\n\n');
+  response.write(formatSSE('state', getState()));
+  response.on('close', () => {
     for (const [name, handler] of bound) bus.off(name, handler);
-    response.end();
+    if (!response.writableEnded) response.end();
   });
 }
 

@@ -10,6 +10,15 @@ const CATCHUP_VIEWER_COOLDOWN = 120_000;
 const CATCHUP_GLOBAL_COOLDOWN = 30_000;
 const MAX_CHAT_CHARACTERS = 500;
 
+export function buildingHeadlineFor(trigger) {
+  return ({
+    'ad-break': 'Preparing the recap from before the ad.',
+    brb: 'Preparing the recap from before the BRB break.',
+    raid: 'Preparing the recap for the raid.',
+    catchup: 'Preparing your catch-up recap.'
+  })[trigger] ?? 'Preparing the recap.';
+}
+
 export function createCardPipeline({
   sourceBuffer,
   channel,
@@ -536,7 +545,7 @@ export function createCardPipeline({
     };
     const placeholder = {
       id: review.id, channel, trigger, triggerInfo, simulated,
-      headline: 'Preparing the recap from before the ad.', bullets: [], sourceDetails: [], sourceItems: [],
+      headline: buildingHeadlineFor(trigger), bullets: [], sourceDetails: [], sourceItems: [],
       provenance: { voiceSeconds: 0, chatCount: 0, eventCount: 0, noteCount: 0 },
       engine: 'fallback', latencyMs: 0, droppedBullets: [], overlayEligible: true,
       status: 'Building', building: true, approved: false, approvalMode: review.approvalMode,

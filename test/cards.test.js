@@ -1,9 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createCardPipeline } from '../src/cards/pipeline.js';
+import { createCardPipeline, buildingHeadlineFor } from '../src/cards/pipeline.js';
 import { buildRecap } from '../src/recap/index.js';
 
 const start = Date.parse('2026-10-25T18:00:00Z');
+
+test('ad-break building placeholder has ad-break wording', () => {
+  assert.equal(buildingHeadlineFor('ad-break'), 'Preparing the recap from before the ad.');
+});
+
+test('BRB building placeholder has BRB wording', () => {
+  assert.equal(buildingHeadlineFor('brb'), 'Preparing the recap from before the BRB break.');
+});
+
+test('raid building placeholder has raid wording', () => {
+  assert.equal(buildingHeadlineFor('raid'), 'Preparing the recap for the raid.');
+});
+
+test('catch-up building placeholder has catch-up wording', () => {
+  assert.equal(buildingHeadlineFor('catchup'), 'Preparing your catch-up recap.');
+});
 
 function makeHarness(options = {}) {
   const clock = makeClock(start);

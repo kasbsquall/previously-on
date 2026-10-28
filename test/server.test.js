@@ -13,6 +13,49 @@ test('SSE frames carry event data as JSON and escape HTML delimiters', () => {
   assert.equal(JSON.parse(json).headline, script);
 });
 
+test('a new SSE connection receives retry guidance and the current on-air state', async t => {
+  const pipeline = new EventEmitter();
+  let state = {
+    onAir: { id: 'live-card', headline: 'The bridge is finished.', until: Date.now() + 10_000 },
+    pending: null, cards: []
+  };
+  pipeline.getState = () => state;
+  const server = createServer({ pipeline, port: 0, mode: 'demo' });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const response = await fetch(`${origin}/events`);
+  assert.equal(response.status, 200);
+  const reader = response.body.getReader();
+  let stream = '';
+  while (!stream.includes('event: state')) {
+    const { value, done } = await reader.read();
+    assert.equal(done, false);
+    stream += new TextDecoder().decode(value);
+  }
+  assert.match(stream, /retry: 500/);
+  const payload = JSON.parse(stream.match(/event: state\ndata: (.+)/)[1]);
+  assert.equal(payload.onAir.id, 'live-card');
+  assert.equal(payload.onAir.headline, 'The bridge is finished.');
+  state = { ...state, onAir: { ...state.onAir, headline: 'The bridge is paved.' } };
+  pipeline.emit('state');
+  const next = await reader.read();
+  assert.equal(next.done, false, 'the SSE response should remain open after the request finishes');
+  assert.match(new TextDecoder().decode(next.value), /The bridge is paved/);
+  await reader.cancel();
+});
+
+test('overlay and panel reconnect with short backoff and reload the current state', async () => {
+  const overlay = await readFile(new URL('../public/overlay.js', import.meta.url), 'utf8');
+  const control = await readFile(new URL('../public/control.js', import.meta.url), 'utf8');
+  for (const source of [overlay, control]) {
+    assert.match(source, /new EventSource\('\/events'\)/);
+    assert.match(source, /setTimeout\(connect(?:Overlay|Panel)Events, reconnectDelay\)/);
+    assert.match(source, /fetch\('\/api\/state'\)/);
+  }
+  assert.match(overlay, /showCard\(state\.onAir, false\)/);
+});
+
 test('POST origin check allows only the bound local origin', () => {
   assert.equal(isAllowedOrigin('http://127.0.0.1:4777', 4777), true);
   assert.equal(isAllowedOrigin('http://localhost:4777', 4777), false);
