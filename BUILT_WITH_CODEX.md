@@ -14,7 +14,7 @@ Every line of product code in this repository was written by OpenAI Codex in tha
 
 At runtime, the recaps come from the OpenAI Responses API. The hackathon rules ask for Codex to build the project. They do not restrict which model the product calls.
 
-## The fourteen prompts
+## The fifteen prompts
 
 The prompt records are in [`docs/codex-prompts/`](docs/codex-prompts/). Each one started with what the review of the previous block found.
 
@@ -34,6 +34,7 @@ The prompt records are in [`docs/codex-prompts/`](docs/codex-prompts/). Each one
 | 12 | [Judge demo and README](docs/codex-prompts/12-judge-demo-and-readme.md), then [12b](docs/codex-prompts/12b-record-demo-fix.md) and [12c](docs/codex-prompts/12c-judge-page-polish.md) | Lower-third cold open, voice generated in the background, demo preload, recorded browser demo for GitHub Pages with visible sources, Pages workflow, README rewritten for judges. 12b fixed the recording script after a real run failed; 12c made the judge page start with a card and say what the product is || A second blind review asked that nothing airs unread, and that the ad break be shown in action |
 | 13 | [Review during ads](docs/codex-prompts/13-review-during-ads.md) | Ad-break card built when the break starts and reviewed while the ads run, airs when the break ends; judge page sources hidden until asked; README "Why" line | Kevin's test channel is not an affiliate, so the ad break could not be shown live |
 | 14 | [OBS BRB trigger](docs/codex-prompts/14-obs-brb.md), then [14b](docs/codex-prompts/14b-obs-scene-events.md) | obs-websocket 5.x client with SHA-256 auth and reconnect, switching to the BRB scene starts a break and leaving it airs the card, OBS row and break scene picker in the panel, `npm run check-obs`, a fourth recorded card on the judge page. 14b: the real OBS 32.1.2 never sent `CurrentProgramSceneChanged`, so the client now follows scene transitions and polls the program scene | Checked live with OBS and Twitch: the card was built when the scene switched to BRB and aired when it switched back |
+| 15 | [Break wording and overlay reconnect](docs/codex-prompts/15-break-wording-and-overlay-reconnect.md) | The card being built names its own break (ad, BRB, raid, `!catchup`); the SSE stream no longer ends when the request closes, and the overlay and panel reconnect with backoff and reload the current state | From the live takes for the video: a BRB card said "before the ad" while building, and after a server restart the OBS browser source showed nothing until refreshed by hand. Checked after the fix: with the overlay open, the server was restarted and the next card appeared on its own |
 
 ## Commits
 

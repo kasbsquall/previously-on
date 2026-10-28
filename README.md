@@ -8,7 +8,7 @@ Why: Twitch CEO Dan Clancy said in September 2026 that “at any given moment of
 
 Try it in your browser, no install: https://kasbsquall.github.io/previously-on/
 
-Video: coming soon.
+Video (2 min, recorded live on our test channel): https://youtu.be/QzGUyjXsTMU
 
 - It starts on EventSub `channel.ad_break.begin` for affiliates and partners, or when the streamer switches to their BRB scene in OBS on any channel. The streamer reviews the card during the break; nothing airs unread unless they choose a timer.
 - It plays on stream for everyone, so viewers install nothing.
@@ -24,7 +24,7 @@ Video: coming soon.
 | OBS | Ticket displayed in OBS 32.1.2 at 1920x1080. |
 | Live OBS BRB break | Switching OBS to the BRB scene built a model card at once (1,819 ms) for review; switching back aired it with the narrator voice. |
 | Model evaluation | 3 cards; 9 bullets kept, 0 dropped; fallback rate 0; p50 2,738 ms, p95 3,429 ms. This is a synthetic fixture evaluation, not live latency. |
-| Tests | 83 passed with `npm test`; the suite covers OBS authentication and reconnect, scene changes, grounding, fallback, veto, cooldowns, keepalive and clock skew. |
+| Tests | 89 passed with `npm test`; the suite covers OBS authentication and reconnect, overlay recovery after a server restart, scene changes, grounding, fallback, veto, cooldowns, keepalive and clock skew. |
 
 Details and limits are in [docs/VERIFICATION.md](docs/VERIFICATION.md). Evaluation data: [results/eval-2026-10-27.json](results/eval-2026-10-27.json).
 
@@ -86,7 +86,7 @@ Complete the device authorization shown in the terminal. Add `http://127.0.0.1:4
 
 Codex session ID: `01a174cd-3a2a-7f21-a9bf-1289a1e0b57a`.
 
-The build ran in one Codex thread across fourteen prompts. Each prompt was written from the review of the previous block. See [BUILT_WITH_CODEX.md](BUILT_WITH_CODEX.md).
+The build ran in one Codex thread across fifteen prompts. Each prompt was written from the review of the previous block. See [BUILT_WITH_CODEX.md](BUILT_WITH_CODEX.md).
 
 ## License
 
